@@ -1,5 +1,5 @@
 [package]
-name = "rtl-power-heatmap"
+name = "sdr-heatmap"
 version = "0.1.0"
 authors = ["J2ghz <j2.00ghz@gmail.com>"]
 edition = "2018"
@@ -9,3 +9,5 @@ edition = "2018"
 [dependencies]
 csv = "^1.1.3"
 image="^0.23.2"
+clap="^2.33.0"
+log="^0.4.8"
