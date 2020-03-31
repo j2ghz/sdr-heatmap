@@ -1,4 +1,5 @@
 use csv::StringRecord;
+use csv::StringRecordsIntoIter;
 use image::png::PNGEncoder;
 
 #[derive(Debug)]
@@ -35,7 +36,7 @@ impl Measurement {
             freq_high: record.get(3).unwrap().parse().unwrap(),
             freq_step: record.get(4).unwrap().parse().unwrap(),
             samples: record.get(5).unwrap().parse().unwrap(),
-            values: values,
+            values,
         }
     }
 }
@@ -45,29 +46,39 @@ fn normalize(v: f32, min: f32, max: f32) -> Vec<u8> {
     vec![n as u8, n as u8, 50]
 }
 
-fn process(path: &str) {
-    let mut rdr = csv::ReaderBuilder::new()
+fn read_file(path: &str) -> StringRecordsIntoIter<std::fs::File> {
+    csv::ReaderBuilder::new()
         .has_headers(false)
         .from_path(path)
-        .unwrap();
+        .unwrap()
+        .into_records()
+}
+
+pub fn main(path: &str) {
+    let records = read_file(path);
+    let (datawidth, dataheight, img) = process(records);
+    let (height, imgdata) = create_image(datawidth, dataheight, img);
+    save_image(datawidth, height, imgdata).unwrap();
+}
+
+fn process(records: StringRecordsIntoIter<std::fs::File>) -> (usize, usize, std::vec::Vec<u8>) {
     let mut date: String = "".to_string();
     let mut time: String = "".to_string();
     let mut batch = Vec::new();
-    let mut batchsize = 0;
+    let mut datawidth = 0;
     let mut img = Vec::new();
-    for result in rdr.records() {
+    for result in records {
         let mut record = result.unwrap();
         record.trim();
         assert!(record.len() > 7);
-        //println!("{:?}", record);
-        let mut m = Measurement::new(record);
+        let m = Measurement::new(record);
         let vals = m.get_values();
         if date == m.date && time == m.time {
         } else {
-            if batchsize == 0 {
-                batchsize = batch.len()
+            if datawidth == 0 {
+                datawidth = batch.len()
             }
-            //assert_eq! {batchsize,batch.len()}
+            debug_assert_eq! {datawidth,batch.len()}
             batch.clear();
             date = m.date;
             time = m.time;
@@ -75,265 +86,40 @@ fn process(path: &str) {
         img.extend(vals.iter().flat_map(|(_, v)| normalize(*v, -17.0, 20.0)));
         batch.extend(vals);
     }
-    let width = batchsize as u32;
-    let height = (img.len() / 3 / batchsize) as u32;
-    //println!("{}x{}", width, height);
+    (datawidth, img.len() / 3 / datawidth, img)
+}
+
+fn tape_measure(width: usize, imgdata: &mut Vec<u8>) {
+    let length = width * 26 * 3;
+    imgdata.append(&mut vec![0; length]);
+}
+
+fn create_image(width: usize, height: usize, mut img: Vec<u8>) -> (usize, std::vec::Vec<u8>) {
+    println!("Raw {}x{}", width, height);
+    let mut imgdata: Vec<u8> = Vec::new();
+    tape_measure(width, &mut imgdata);
+    imgdata.append(&mut img);
+    (height + 26, imgdata)
+}
+
+fn save_image(
+    width: usize,
+    height: usize,
+    imgdata: Vec<u8>,
+) -> std::result::Result<(), image::error::ImageError> {
+    println!("Saving target/1.png {}x{}", width, height);
     let f = std::fs::File::create("target/1.png").unwrap();
-    PNGEncoder::new(f)
-        .encode(&img, width, height, image::ColorType::Rgb8)
-        .unwrap();
+    PNGEncoder::new(f).encode(
+        &imgdata,
+        width as u32,
+        height as u32,
+        image::ColorType::Rgb8,
+    )
 }
 
 #[cfg(test)]
 mod tests {
 
     #[test]
-    fn freq() {
-        assert_eq!(
-            vec![
-                90000000.0,
-                90166666.62,
-                90333333.24,
-                90499999.86,
-                90666666.48,
-                90833333.1,
-                90999999.72,
-                91166666.34,
-                91333333.0,
-                91499999.62,
-                91666666.24,
-                91833332.86,
-                91999999.48,
-                92166666.1,
-                92333332.72,
-                92499999.34,
-                92666666.0,
-                92833332.62,
-                92999999.24,
-                93166665.86,
-                93333332.48,
-                93499999.1,
-                93666665.72,
-                93833332.34,
-                93999999.0,
-                94166665.62,
-                94333332.24,
-                94499998.86,
-                94666665.48,
-                94833332.1,
-                94999998.72,
-                95166665.34,
-                95333332.0,
-                95499998.62,
-                95666665.24,
-                95833331.86,
-                95999998.48,
-                96166665.1,
-                96333331.72,
-                96499998.34,
-                96666665.0,
-                96833331.62,
-                96999998.24,
-                97166664.86,
-                97333331.48,
-                97499998.1,
-                97666664.72,
-                97833331.34,
-                97999998.0,
-                98166664.62,
-                98333331.24,
-                98499997.86,
-                98666664.48,
-                98833331.1,
-                98999997.72,
-                99166664.34,
-                99333331.0,
-                99499997.62,
-                99666664.24,
-                99833330.86,
-                99999997.48,
-                100166664.1,
-                100333330.72,
-                100499997.34,
-                100666664.0,
-                100833330.62,
-                100999997.24,
-                101166663.86,
-                101333330.48,
-                101499997.1,
-                101666663.72,
-                101833330.34,
-                101999997.0,
-                102166663.62,
-                102333330.24,
-                102499996.86,
-                102666663.48,
-                102833330.1,
-                102999996.72,
-                103166663.34,
-                103333330.0,
-                103499996.62,
-                103666663.24,
-                103833329.86,
-                103999996.48,
-                104166663.1,
-                104333329.72,
-                104499996.34,
-                104666663.0,
-                104833329.62,
-                104999996.24,
-                105166662.86,
-                105333329.48,
-                105499996.1,
-                105666662.72,
-                105833329.34,
-                105999996.0,
-                106166662.62,
-                106333329.24,
-                106499995.86,
-                106666662.48,
-                106833329.1,
-                106999995.72,
-                107166662.34,
-                107333329.0,
-                107499995.62,
-                107666662.24,
-                107833328.86,
-                107999995.48,
-                108166662.1,
-                108333328.72,
-                108499995.34,
-                108666662.0,
-                108833328.62,
-                108999995.24,
-                109166661.86,
-                109333328.48,
-                109499995.1,
-                109666661.72,
-                109833328.34
-            ],
-            vec![
-                90000000.0,
-                90166666.62,
-                90333333.24,
-                90499999.86,
-                90666666.48,
-                90833333.1,
-                90999999.72,
-                91166666.34,
-                91333333.0,
-                91499999.62,
-                91666666.24,
-                91833332.86,
-                91999999.48,
-                92166666.1,
-                92333332.72,
-                92499999.34,
-                92666666.0,
-                92833332.62,
-                92999999.24,
-                93166665.86,
-                93333332.48,
-                93499999.1,
-                93666665.72,
-                93833332.34,
-                93999999.0,
-                94166665.62,
-                94333332.24,
-                94499998.86,
-                94666665.48,
-                94833332.1,
-                94999998.72,
-                95166665.34,
-                95333332.0,
-                95499998.62,
-                95666665.24,
-                95833331.86,
-                95999998.48,
-                96166665.1,
-                96333331.72,
-                96499998.34,
-                96666665.0,
-                96833331.62,
-                96999998.24,
-                97166664.86,
-                97333331.48,
-                97499998.1,
-                97666664.72,
-                97833331.34,
-                97999998.0,
-                98166664.62,
-                98333331.24,
-                98499997.86,
-                98666664.48,
-                98833331.1,
-                98999997.72,
-                99166664.34,
-                99333331.0,
-                99499997.62,
-                99666664.24,
-                99833330.86,
-                99999997.48,
-                100166664.1,
-                100333330.72,
-                100499997.34,
-                100666664.0,
-                100833330.62,
-                100999997.24,
-                101166663.86,
-                101333330.48,
-                101499997.1,
-                101666663.72,
-                101833330.34,
-                101999997.0,
-                102166663.62,
-                102333330.24,
-                102499996.86,
-                102666663.48,
-                102833330.1,
-                102999996.72,
-                103166663.34,
-                103333330.0,
-                103499996.62,
-                103666663.24,
-                103833329.86,
-                103999996.48,
-                104166663.1,
-                104333329.72,
-                104499996.34,
-                104666663.0,
-                104833329.62,
-                104999996.24,
-                105166662.86,
-                105333329.48,
-                105499996.1,
-                105666662.72,
-                105833329.34,
-                105999996.0,
-                106166662.62,
-                106333329.24,
-                106499995.86,
-                106666662.48,
-                106833329.1,
-                106999995.72,
-                107166662.34,
-                107333329.0,
-                107499995.62,
-                107666662.24,
-                107833328.86,
-                107999995.48,
-                108166662.1,
-                108333328.72,
-                108499995.34,
-                108666662.0,
-                108833328.62,
-                108999995.24,
-                109166661.86,
-                109333328.48,
-                109499995.1,
-                109666661.72,
-                109833328.34
-            ]
-        )
-    }
+    fn freq() {}
 }
