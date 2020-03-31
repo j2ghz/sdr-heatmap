@@ -1,6 +1,7 @@
 use csv::StringRecord;
 use csv::StringRecordsIntoIter;
 use image::png::PNGEncoder;
+use log::info;
 
 #[derive(Debug)]
 struct Measurement {
@@ -55,10 +56,12 @@ fn read_file(path: &str) -> StringRecordsIntoIter<std::fs::File> {
 }
 
 pub fn main(path: &str) {
+    info!("Loading: {}", path);
     let records = read_file(path);
     let (datawidth, dataheight, img) = process(records);
     let (height, imgdata) = create_image(datawidth, dataheight, img);
-    save_image(datawidth, height, imgdata).unwrap();
+    let dest = path.to_owned() + ".png";
+    save_image(datawidth, height, imgdata, &dest).unwrap();
 }
 
 fn process(records: StringRecordsIntoIter<std::fs::File>) -> (usize, usize, std::vec::Vec<u8>) {
@@ -95,7 +98,7 @@ fn tape_measure(width: usize, imgdata: &mut Vec<u8>) {
 }
 
 fn create_image(width: usize, height: usize, mut img: Vec<u8>) -> (usize, std::vec::Vec<u8>) {
-    println!("Raw {}x{}", width, height);
+    info!("Raw {}x{}", width, height);
     let mut imgdata: Vec<u8> = Vec::new();
     tape_measure(width, &mut imgdata);
     imgdata.append(&mut img);
@@ -106,9 +109,10 @@ fn save_image(
     width: usize,
     height: usize,
     imgdata: Vec<u8>,
+    dest: &str,
 ) -> std::result::Result<(), image::error::ImageError> {
-    println!("Saving target/1.png {}x{}", width, height);
-    let f = std::fs::File::create("target/1.png").unwrap();
+    info!("Saving target/1.png {}x{}", width, height);
+    let f = std::fs::File::create(dest).unwrap();
     PNGEncoder::new(f).encode(
         &imgdata,
         width as u32,
