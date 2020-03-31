@@ -1,9 +1,8 @@
 use clap::{App, Arg};
-use sdr_heatmap::Measurement;
 
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
-const NAME: &'static str = env!("CARGO_PKG_NAME");
-const AUTHOR: &'static str = env!("CARGO_PKG_AUTHORS");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+const NAME: &str = env!("CARGO_PKG_NAME");
+const AUTHOR: &str = env!("CARGO_PKG_AUTHORS");
 
 fn main() {
     let matches = App::new(NAME)
@@ -24,5 +23,5 @@ fn main() {
         )
         .get_matches();
     let input = matches.value_of("CSV").unwrap();
-    sdrheatmap::process(input);
+    sdr_heatmap::main(input);
 }
