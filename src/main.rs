@@ -1,6 +1,4 @@
 use clap::{App, Arg};
-use log::*;
-use std::fs;
 use walkdir::WalkDir;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -40,7 +38,7 @@ fn main() {
     let verbose = matches.occurrences_of("verbose") as usize;
     let quiet = matches.is_present("quiet");
     stderrlog::new()
-        //.module(module_path!())
+        .module(module_path!())
         .quiet(quiet)
         .verbosity(verbose)
         //.timestamp(ts)
