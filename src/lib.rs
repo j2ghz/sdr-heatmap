@@ -44,10 +44,11 @@ impl Measurement {
 }
 
 pub fn normalize(v: f32, min: f32, max: f32) -> Vec<u8> {
-    if v < min || v > max {
-        panic!("{} {} {}", v, min, max);
-    }
-    let n = (v - min) / max * 255.0;
+    debug_assert!(v >= min);
+    debug_assert!(v <= max);
+    let n = (v - min) * (255.0 / (max - min));
+    debug_assert!(n >= 0.0);
+    debug_assert!(n <= 255.0);
     vec![n as u8, n as u8, 50]
 }
 
