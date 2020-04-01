@@ -1,7 +1,8 @@
 use csv::StringRecord;
-use csv::StringRecordsIntoIter;
+use csv::StringRecordsIter;
 use image::png::PNGEncoder;
-use log::info;
+use log::{error, info};
+use std::f32;
 
 #[derive(Debug)]
 struct Measurement {
@@ -42,29 +43,58 @@ impl Measurement {
     }
 }
 
-fn normalize(v: f32, min: f32, max: f32) -> Vec<u8> {
+pub fn normalize(v: f32, min: f32, max: f32) -> Vec<u8> {
+    if v < min || v > max {
+        panic!("{} {} {}", v, min, max);
+    }
     let n = (v - min) / max * 256.0;
     vec![n as u8, n as u8, 50]
 }
 
-fn read_file(path: &str) -> StringRecordsIntoIter<std::fs::File> {
+fn read_file(path: &str) -> csv::Reader<std::fs::File> {
     csv::ReaderBuilder::new()
         .has_headers(false)
         .from_path(path)
         .unwrap()
-        .into_records()
 }
 
 pub fn main(path: &str) {
     info!("Loading: {}", path);
-    let records = read_file(path);
-    let (datawidth, dataheight, img) = process(records);
+    let mut reader = read_file(path);
+    let start = reader.position().clone();
+    let (min, max) = preprocess(reader.records());
+    reader.seek(start).unwrap();
+    let (datawidth, dataheight, img) = process(reader.records(), min, max);
     let (height, imgdata) = create_image(datawidth, dataheight, img);
     let dest = path.to_owned() + ".png";
     save_image(datawidth, height, imgdata, &dest).unwrap();
 }
 
-fn process(records: StringRecordsIntoIter<std::fs::File>) -> (usize, usize, std::vec::Vec<u8>) {
+fn preprocess(records: StringRecordsIter<std::fs::File>) -> (f32, f32) {
+    let mut min = f32::INFINITY;
+    let mut max = f32::NEG_INFINITY;
+    for result in records {
+        let mut record = result.unwrap();
+        record.trim();
+        let values: Vec<f32> = record.iter().skip(6).map(|s| s.parse().unwrap()).collect();
+        for value in values {
+            if value > max {
+                max = value
+            }
+            if value < min {
+                min = value
+            }
+        }
+    }
+    info!("Color values {} to {}", min, max);
+    (min, max)
+}
+
+fn process(
+    records: StringRecordsIter<std::fs::File>,
+    min: f32,
+    max: f32,
+) -> (usize, usize, std::vec::Vec<u8>) {
     let mut date: String = "".to_string();
     let mut time: String = "".to_string();
     let mut batch = Vec::new();
@@ -86,9 +116,13 @@ fn process(records: StringRecordsIntoIter<std::fs::File>) -> (usize, usize, std:
             date = m.date;
             time = m.time;
         }
-        img.extend(vals.iter().flat_map(|(_, v)| normalize(*v, -17.0, 20.0)));
+        img.extend(vals.iter().flat_map(|(_, v)| normalize(*v, min, max)));
         batch.extend(vals);
     }
+    if datawidth == 0 {
+        datawidth = batch.len()
+    }
+    info!("{} {}", datawidth, batch.len());
     (datawidth, img.len() / 3 / datawidth, img)
 }
 
@@ -111,7 +145,7 @@ fn save_image(
     imgdata: Vec<u8>,
     dest: &str,
 ) -> std::result::Result<(), image::error::ImageError> {
-    info!("Saving target/1.png {}x{}", width, height);
+    info!("Saving {} {}x{}", dest, width, height);
     let f = std::fs::File::create(dest).unwrap();
     PNGEncoder::new(f).encode(
         &imgdata,
@@ -123,7 +157,22 @@ fn save_image(
 
 #[cfg(test)]
 mod tests {
-
+    use crate::normalize;
     #[test]
-    fn freq() {}
+    fn normalize_goes_up() {
+        assert_eq!(
+            (0..256)
+                .map(|v| v as f32)
+                .map(|v| normalize(v, 0.0, 256.0).first().cloned().unwrap())
+                .collect::<Vec<_>>(),
+            (0..256).map(|v| v as u8).collect::<Vec<_>>()
+        );
+        print!(
+            "{:?}",
+            (0..100)
+                .map(|v| v as f32 * 1.99)
+                .map(|v| normalize(v, 0.0, 200.0).first().cloned().unwrap())
+                .collect::<Vec<_>>()
+        );
+    }
 }
