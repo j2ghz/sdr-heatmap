@@ -47,7 +47,7 @@ pub fn normalize(v: f32, min: f32, max: f32) -> Vec<u8> {
     if v < min || v > max {
         panic!("{} {} {}", v, min, max);
     }
-    let n = (v - min) / max * 256.0;
+    let n = (v - min) / max * 255.0;
     vec![n as u8, n as u8, 50]
 }
 
