@@ -1,7 +1,7 @@
 use csv::StringRecord;
 use csv::StringRecordsIter;
 use image::png::PNGEncoder;
-use log::{error, info};
+use log::*;
 use std::f32;
 
 #[derive(Debug)]
@@ -162,18 +162,11 @@ mod tests {
     #[test]
     fn normalize_goes_up() {
         assert_eq!(
-            (0..256)
+            (0..255)
                 .map(|v| v as f32)
-                .map(|v| normalize(v, 0.0, 256.0).first().cloned().unwrap())
+                .map(|v| normalize(v, 0.0, 255.0).first().cloned().unwrap())
                 .collect::<Vec<_>>(),
-            (0..256).map(|v| v as u8).collect::<Vec<_>>()
-        );
-        print!(
-            "{:?}",
-            (0..100)
-                .map(|v| v as f32 * 1.99)
-                .map(|v| normalize(v, 0.0, 200.0).first().cloned().unwrap())
-                .collect::<Vec<_>>()
+            (0..255).map(|v| v as u8).collect::<Vec<_>>()
         );
     }
 }
