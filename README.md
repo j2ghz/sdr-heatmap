@@ -1,4 +1,4 @@
-# sdr-heatmap
+# sdr-heatmap ![[](https://github.com/j2ghz/sdr-heatmap/actions?query=workflow%3ARust)](https://img.shields.io/github/workflow/status/j2ghz/sdr-heatmap/Rust)
 
 *I'm using this as an opportunity to learn Rust.*
 
@@ -8,16 +8,19 @@ It aims to provide better speed than heatmap.py, while keeping the same image fo
 Another similar tool is [rtl-gopow](https://github.com/dhogborg/rtl-gopow), but it produces a different (IMO inferior) image than heatmap.py.
 
 ## Installation:
-`cargo install sdr-heatmap`
+`cargo install sdr-heatmap` (from [crates.io](https://crates.io/crates/sdr-heatmap))
+
+[![Packaging status](https://repology.org/badge/vertical-allrepos/sdr-heatmap.svg)](https://repology.org/project/sdr-heatmap/versions)
 
 
 ## Speed (WIP):
 ```
+heatmap.py:
 ________________________________________________________
 Executed in  242.32 millis    fish           external
    usr time  125.00 millis    0.00 micros  125.00 millis
    sys time  109.38 millis    0.00 micros  109.38 millis
-
+sdr-heatmap:
 ________________________________________________________
 Executed in   17.80 millis    fish           external
    usr time    0.00 millis    0.00 micros    0.00 millis
