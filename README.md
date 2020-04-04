@@ -14,20 +14,7 @@ Another similar tool is [rtl-gopow](https://github.com/dhogborg/rtl-gopow), but 
 
 
 ## Speed (WIP):
-```
-heatmap.py:
-________________________________________________________
-Executed in  242.32 millis    fish           external
-   usr time  125.00 millis    0.00 micros  125.00 millis
-   sys time  109.38 millis    0.00 micros  109.38 millis
-sdr-heatmap:
-________________________________________________________
-Executed in   17.80 millis    fish           external
-   usr time    0.00 millis    0.00 micros    0.00 millis
-   sys time   15.62 millis    0.00 micros   15.62 millis
-```
-| Benchmark | heatmap.py | sdr-heatmap | rtl-gopow |
-|-----------|------------|-------------|-----------|
-| 14MB FM   |            |             |           |
-|           |            |             |           |
-|           |            |             |           |
+| Benchmark | sdr-heatmap | heatmap.py | rtl-gopow |
+|----------:|------------:|------------:|----------:|
+|  14 MB FM | 375 ms      | 4558 ms     | 1995 ms   |
+| 829 MB FM | 19,37 s     | 268,26 s    | 141,34 s  |
