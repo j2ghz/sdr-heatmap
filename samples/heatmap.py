@@ -282,7 +282,7 @@ def summarize_pass(args):
         if args.end_time is not None and date_parse(t) > args.end_time:
             break
         times.add(t)
-        columns = list(frange(low, high, step))  # columns in one og row
+        columns = list(frange(low, high, step))
         start_col, stop_col = slice_columns(
             columns, args.low_freq, args.high_freq)
         f_key = (columns[start_col], columns[stop_col], step)
@@ -315,7 +315,6 @@ def summarize_pass(args):
         start = date_parse(min(times))
 
     freqs = list(sorted(list(freqs)))
-    print(freqs)
     times = list(sorted(list(times)))
     labels = list(sorted(list(labels)))
 
