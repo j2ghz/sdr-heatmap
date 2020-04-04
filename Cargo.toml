@@ -4,7 +4,11 @@ version = "0.1.1"
 authors = ["J2ghz <j2.00ghz@gmail.com>"]
 edition = "2018"
 description = "Generates images from rtl_power csv files"
-license = "GNU Affero General Public License v3.0"
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/j2ghz/sdr-heatmap/"
+readme = "README.md"
+keywords = ["sdr", "rtl-sdr", "rtl-gopow", "heatmap.py", "rtl_power"]
+categories = ["command-line-utilities"]
 exclude = [
     "samples/*",
 ]
