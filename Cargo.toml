@@ -7,7 +7,7 @@ description = "Generates images from rtl_power csv files"
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/j2ghz/sdr-heatmap/"
 readme = "README.md"
-keywords = ["sdr", "rtl-sdr", "rtl-gopow", "heatmap.py", "rtl_power"]
+keywords = ["sdr", "rtl-sdr", "rtl_power"]
 categories = ["command-line-utilities"]
 exclude = [
     "samples/*",
