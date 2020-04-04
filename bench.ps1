@@ -1,0 +1,2 @@
+hyperfine --export-markdown bench.md -L file 0.csv,1-huge.csv '.\target\release\sdr-heatmap.exe -vvvv .\samples\{file}' 'python .\samples\heatmap.py .\samples\{file} .\samples\{file}-py.png' '.\samples\gopow
+.exe -i .\samples\{file} -o .\samples\{file}-go.png'
