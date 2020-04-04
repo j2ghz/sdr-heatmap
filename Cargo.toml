@@ -3,6 +3,8 @@ name = "sdr-heatmap"
 version = "0.1.1"
 authors = ["J2ghz <j2.00ghz@gmail.com>"]
 edition = "2018"
+description = "Generates images from rtl_power csv files"
+license = "GNU Affero General Public License v3.0"
 exclude = [
     "samples/*",
 ]
