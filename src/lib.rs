@@ -46,6 +46,12 @@ impl Measurement {
 pub fn normalize(v: f32, min: f32, max: f32) -> Vec<u8> {
     debug_assert!(v >= min);
     debug_assert!(v <= max);
+    if v < min {
+        return vec![0, 0, 0];
+    }
+    if v > max {
+        return vec![255, 255, 255];
+    }
     let n = (v - min) * (255.0 / (max - min));
     debug_assert!(n >= 0.0);
     debug_assert!(n <= 255.0);
@@ -79,11 +85,13 @@ fn preprocess(records: StringRecordsIter<std::fs::File>) -> (f32, f32) {
         record.trim();
         let values: Vec<f32> = record.iter().skip(6).map(|s| s.parse().unwrap()).collect();
         for value in values {
-            if value > max {
-                max = value
-            }
-            if value < min {
-                min = value
+            if value != f32::INFINITY && value != f32::NEG_INFINITY {
+                if value > max {
+                    max = value
+                }
+                if value < min {
+                    min = value
+                }
             }
         }
     }
