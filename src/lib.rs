@@ -9,11 +9,9 @@ struct Measurement {
     date: String,
     time: String,
 
-
-
     freq_low: u32,
     freq_high: u32,
-                    freq_step: f64,
+    freq_step: f64,
     samples: u32,
     values: Vec<f32>,
 }
