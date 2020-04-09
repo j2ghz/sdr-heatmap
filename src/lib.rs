@@ -1,8 +1,9 @@
 use csv::StringRecord;
-use csv::StringRecordsIter;
+use flate2::read::GzDecoder;
 use image::png::PNGEncoder;
 use log::*;
 use std::f32;
+use std::fs::File;
 
 #[derive(Debug)]
 struct Measurement {
@@ -44,8 +45,8 @@ impl Measurement {
 }
 
 pub fn normalize(v: f32, min: f32, max: f32) -> Vec<u8> {
-    debug_assert!(v >= min);
-    debug_assert!(v <= max);
+    debug_assert!(v >= min || v == f32::NEG_INFINITY);
+    debug_assert!(v <= max || v == f32::INFINITY);
     if v < min {
         return vec![0, 0, 0];
     }
@@ -58,29 +59,36 @@ pub fn normalize(v: f32, min: f32, max: f32) -> Vec<u8> {
     vec![n as u8, n as u8, 50]
 }
 
-fn read_file(path: &str) -> csv::Reader<std::fs::File> {
-    csv::ReaderBuilder::new()
-        .has_headers(false)
-        .from_path(path)
-        .unwrap()
+fn read_file(path: &str) -> csv::Reader<Box<dyn std::io::Read>> {
+    let file = File::open(path).unwrap();
+    if path.ends_with(".gz") {
+        let decomp = GzDecoder::new(file);
+        csv::ReaderBuilder::new()
+            .has_headers(false)
+            .from_reader(Box::new(decomp))
+    } else {
+        csv::ReaderBuilder::new()
+            .has_headers(false)
+            .from_reader(Box::new(file))
+    }
 }
 
 pub fn main(path: &str) {
     info!("Loading: {}", path);
-    let mut reader = read_file(path);
-    let start = reader.position().clone();
-    let (min, max) = preprocess(reader.records());
-    reader.seek(start).unwrap();
-    let (datawidth, dataheight, img) = process(reader.records(), min, max);
+
+    let reader = read_file(path);
+    let (min, max) = preprocess(reader);
+    let reader = read_file(path);
+    let (datawidth, dataheight, img) = process(reader, min, max);
     let (height, imgdata) = create_image(datawidth, dataheight, img);
     let dest = path.to_owned() + ".png";
     save_image(datawidth, height, imgdata, &dest).unwrap();
 }
 
-fn preprocess(records: StringRecordsIter<std::fs::File>) -> (f32, f32) {
+fn preprocess(reader: csv::Reader<Box<dyn std::io::Read>>) -> (f32, f32) {
     let mut min = f32::INFINITY;
     let mut max = f32::NEG_INFINITY;
-    for result in records {
+    for result in reader.into_records() {
         let mut record = result.unwrap();
         record.trim();
         let values: Vec<f32> = record.iter().skip(6).map(|s| s.parse().unwrap()).collect();
@@ -100,7 +108,7 @@ fn preprocess(records: StringRecordsIter<std::fs::File>) -> (f32, f32) {
 }
 
 fn process(
-    records: StringRecordsIter<std::fs::File>,
+    reader: csv::Reader<Box<dyn std::io::Read>>,
     min: f32,
     max: f32,
 ) -> (usize, usize, std::vec::Vec<u8>) {
@@ -109,7 +117,7 @@ fn process(
     let mut batch = Vec::new();
     let mut datawidth = 0;
     let mut img = Vec::new();
-    for result in records {
+    for result in reader.into_records() {
         let mut record = result.unwrap();
         record.trim();
         assert!(record.len() > 7);
