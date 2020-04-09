@@ -139,7 +139,7 @@ fn process(
     if datawidth == 0 {
         datawidth = batch.len()
     }
-    info!("{} {}", datawidth, batch.len());
+    info!("Img data {}x{}", datawidth, batch.len());
     (datawidth, img.len() / 3 / datawidth, img)
 }
 
@@ -153,7 +153,16 @@ fn create_image(width: usize, height: usize, mut img: Vec<u8>) -> (usize, std::v
     let mut imgdata: Vec<u8> = Vec::new();
     tape_measure(width, &mut imgdata);
     imgdata.append(&mut img);
-    (height + 26, imgdata)
+    let height = height + 26;
+    let expected_length = width * height * 3;
+    if expected_length > imgdata.len() {
+        warn!("Image is missing some values, was the files cut early? Filling black.",);
+        imgdata.append(&mut vec![0; expected_length - imgdata.len()]);
+    } else if expected_length < imgdata.len() {
+        warn!("Image has too many values, was the files cut early? Trimming.",);
+        imgdata.truncate(expected_length);
+    }
+    (height, imgdata)
 }
 
 fn save_image(
