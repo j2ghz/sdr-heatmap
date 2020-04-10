@@ -51,7 +51,11 @@ pub fn normalize(v: f32, min: f32, max: f32) -> Vec<u8> {
         return vec![0, 0, 0];
     } else if v > max {
         return vec![255, 255, 255];
-    } //if v = max return max
+    } else if v == max {
+        return vec![255, 255, 50];
+    } else if v == min {
+        return vec![0, 0, 50];
+    }
     let n = (v - min) * (255.0 / (max - min));
     if n < 0.0 || n > 255.0 {
         warn!("Invalid color: {} {} {} {}", n, v, min, max)
@@ -203,6 +207,6 @@ mod tests {
 
     #[test]
     fn normalize_max() {
-        assert_eq!(normalize(23.02, -29.4, 23.02), vec![255, 255, 255]);
+        assert_eq!(normalize(23.02, -29.4, 23.02), vec![255, 255, 50]);
     }
 }
