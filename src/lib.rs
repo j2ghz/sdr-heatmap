@@ -3,7 +3,7 @@ use flate2::read::GzDecoder;
 use image::png::PNGEncoder;
 use log::*;
 use std::f32;
-use std::fs::File;
+use std::{cmp::Ordering, fs::File};
 
 #[derive(Debug)]
 struct Measurement {
@@ -49,11 +49,13 @@ pub fn normalize(v: f32, min: f32, max: f32) -> Vec<u8> {
     debug_assert!(v <= max || v == f32::INFINITY);
     if v < min {
         return vec![0, 0, 0];
-    }
-    if v > max {
+    } else if v > max {
         return vec![255, 255, 255];
     }
     let n = (v - min) * (255.0 / (max - min));
+    if n < 0.0 || n > 255.0 {
+        panic!("Invalid color: {} {} {} {}", n, v, min, max)
+    }
     debug_assert!(n >= 0.0);
     debug_assert!(n <= 255.0);
     vec![n as u8, n as u8, 50]
@@ -155,12 +157,16 @@ fn create_image(width: usize, height: usize, mut img: Vec<u8>) -> (usize, std::v
     imgdata.append(&mut img);
     let height = height + 26;
     let expected_length = width * height * 3;
-    if expected_length > imgdata.len() {
-        warn!("Image is missing some values, was the files cut early? Filling black.",);
-        imgdata.append(&mut vec![0; expected_length - imgdata.len()]);
-    } else if expected_length < imgdata.len() {
-        warn!("Image has too many values, was the files cut early? Trimming.",);
-        imgdata.truncate(expected_length);
+    match expected_length.cmp(&imgdata.len()) {
+        Ordering::Greater => {
+            warn!("Image is missing some values, was the file cut early? Filling black.",);
+            imgdata.append(&mut vec![0; expected_length - imgdata.len()]);
+        }
+        Ordering::Less => {
+            warn!("Image has too many values, was the file cut early? Trimming.",);
+            imgdata.truncate(expected_length);
+        }
+        Ordering::Equal => {}
     }
     (height, imgdata)
 }
