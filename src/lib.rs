@@ -200,4 +200,9 @@ mod tests {
             (0..255).map(|v| v as u8).collect::<Vec<_>>()
         );
     }
+
+    #[test]
+    fn normalize_max() {
+        assert_eq!(normalize(23.02, -29.4, 23.02), vec![255, 255, 255]);
+    }
 }
