@@ -51,10 +51,10 @@ pub fn normalize(v: f32, min: f32, max: f32) -> Vec<u8> {
         return vec![0, 0, 0];
     } else if v > max {
         return vec![255, 255, 255];
-    }
+    } //if v = max return max
     let n = (v - min) * (255.0 / (max - min));
     if n < 0.0 || n > 255.0 {
-        panic!("Invalid color: {} {} {} {}", n, v, min, max)
+        warn!("Invalid color: {} {} {} {}", n, v, min, max)
     }
     debug_assert!(n >= 0.0);
     debug_assert!(n <= 255.0);
