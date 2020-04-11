@@ -4,7 +4,7 @@ on:
   push:
     branches: [ master ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, develop ]
 
 jobs:
   build:
@@ -25,8 +25,10 @@ jobs:
       with:
         command: build
         toolchain: ${{matrix.toolchain}}
+        arg: --release 
     - name: Build
       uses: actions-rs/cargo@v1.0.1
       with:
         command: test
         toolchain: ${{matrix.toolchain}}
+        arg: --release
