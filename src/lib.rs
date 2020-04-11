@@ -236,8 +236,7 @@ fn save_image(
 
 #[cfg(test)]
 mod tests {
-    use crate::main;
-    use crate::scale_tocolor;
+    use crate::*;
     #[test]
     fn normalize_goes_up() {
         assert_eq!(
@@ -257,5 +256,14 @@ mod tests {
     #[test]
     fn complete() {
         main("samples/sample1.csv.gz")
+    }
+
+    #[test]
+    /// Should be a benchmark, but unstable
+    fn preprocess_test() {
+        let file = open_file("samples/sample1.csv.gz");
+        let reader = read_file(file);
+        let (min, max) = preprocess(reader);
+        println!("{} {}", min, max);
     }
 }
