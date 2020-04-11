@@ -65,27 +65,32 @@ pub fn normalize(v: f32, min: f32, max: f32) -> Vec<u8> {
     vec![n as u8, n as u8, 50]
 }
 
-fn read_file(path: &str) -> csv::Reader<Box<dyn std::io::Read>> {
+fn open_file(path: &str) -> Box<dyn std::io::Read> {
     let file = File::open(path).unwrap();
     if path.ends_with(".gz") {
-        let decomp = GzDecoder::new(file);
-        csv::ReaderBuilder::new()
-            .has_headers(false)
-            .from_reader(Box::new(decomp))
+        return Box::new(GzDecoder::new(file));
     } else {
-        csv::ReaderBuilder::new()
-            .has_headers(false)
-            .from_reader(Box::new(file))
+        return Box::new(file);
     }
+}
+
+fn read_file<T: std::io::Read>(file: T) -> csv::Reader<T> {
+    csv::ReaderBuilder::new()
+        .has_headers(false)
+        .from_reader(file)
 }
 
 pub fn main(path: &str) {
     info!("Loading: {}", path);
-
-    let reader = read_file(path);
+    //Preprocess
+    let file = open_file(path);
+    let reader = read_file(file);
     let (min, max) = preprocess(reader);
-    let reader = read_file(path);
+    //Process
+    let file = open_file(path);
+    let reader = read_file(file);
     let (datawidth, dataheight, img) = process(reader, min, max);
+    //Draw
     let (height, imgdata) = create_image(datawidth, dataheight, img);
     let dest = path.to_owned() + ".png";
     save_image(datawidth, height, imgdata, &dest).unwrap();
