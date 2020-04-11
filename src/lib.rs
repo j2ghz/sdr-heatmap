@@ -35,34 +35,61 @@ impl Measurement {
         Measurement {
             date: record.get(0).unwrap().to_string(),
             time: record.get(1).unwrap().to_string(),
-            freq_low: record.get(2).unwrap().parse().unwrap(),
-            freq_high: record.get(3).unwrap().parse().unwrap(),
-            freq_step: record.get(4).unwrap().parse().unwrap(),
-            samples: record.get(5).unwrap().parse().unwrap(),
+            freq_low: parse(record.get(2).unwrap()).unwrap(),
+            freq_high: parse(record.get(3).unwrap()).unwrap(),
+            freq_step: parse(record.get(4).unwrap()).unwrap(),
+            samples: parse(record.get(5).unwrap()).unwrap(),
             values,
         }
     }
 }
 
-pub fn normalize(v: f32, min: f32, max: f32) -> Vec<u8> {
-    debug_assert!(v >= min || v == f32::NEG_INFINITY);
-    debug_assert!(v <= max || v == f32::INFINITY);
-    if v < min {
+fn parse<T: std::str::FromStr>(
+    string: &str,
+) -> std::result::Result<T, <T as std::str::FromStr>::Err> {
+    let parsed = string.parse::<T>();
+    debug_assert!(parsed.is_ok(), "Could not parse {}", string);
+    parsed
+}
+
+/// Places value on a scale from min to max, and transforms it to an integer scale from 0 to 255. Returns a color using the default palette.
+pub fn scale_tocolor(value: f32, min: f32, max: f32) -> Vec<u8> {
+    debug_assert!(
+        value >= min || value == f32::NEG_INFINITY,
+        "Value {} is smaller than min {}",
+        value,
+        min
+    );
+    debug_assert!(
+        value <= max || value == f32::INFINITY,
+        "Value {} is greater than max {}",
+        value,
+        max
+    );
+    if value < min {
         return vec![0, 0, 0];
-    } else if v > max {
+    } else if value > max {
         return vec![255, 255, 255];
-    } else if v == max {
+    } else if value == max {
         return vec![255, 255, 50];
-    } else if v == min {
+    } else if value == min {
         return vec![0, 0, 50];
     }
-    let n = (v - min) * (255.0 / (max - min));
-    if n < 0.0 || n > 255.0 {
-        warn!("Invalid color: {} {} {} {}", n, v, min, max)
+    let scaled = (value - min) * (255.0 / (max - min));
+    if scaled < 0.0 || scaled > 255.0 {
+        warn!("Computed invalid color! Value range: {} to {}, Value: {}, Color range: 0-255, Color: {}", min,max,value,scaled)
     }
-    debug_assert!(n >= 0.0);
-    debug_assert!(n <= 255.0);
-    vec![n as u8, n as u8, 50]
+    debug_assert!(
+        scaled >= 0.0,
+        "Scaled value is outside of range: {}",
+        scaled
+    );
+    debug_assert!(
+        scaled <= 255.0,
+        "Scaled value is outside of range: {}",
+        scaled
+    );
+    vec![scaled as u8, scaled as u8, 50]
 }
 
 fn open_file(path: &str) -> Box<dyn std::io::Read> {
@@ -102,7 +129,18 @@ fn preprocess(reader: csv::Reader<Box<dyn std::io::Read>>) -> (f32, f32) {
     for result in reader.into_records() {
         let mut record = result.unwrap();
         record.trim();
-        let values: Vec<f32> = record.iter().skip(6).map(|s| s.parse().unwrap()).collect();
+        let values: Vec<f32> = record
+            .iter()
+            .skip(6)
+            .map(|s| {
+                if s == "-nan" {
+                    f32::NAN
+                } else {
+                    s.parse::<f32>()
+                        .expect(&format!("{} should be a valid float", s))
+                }
+            })
+            .collect();
         for value in values {
             if value != f32::INFINITY && value != f32::NEG_INFINITY {
                 if value > max {
@@ -144,7 +182,7 @@ fn process(
             date = m.date;
             time = m.time;
         }
-        img.extend(vals.iter().flat_map(|(_, v)| normalize(*v, min, max)));
+        img.extend(vals.iter().flat_map(|(_, v)| scale_tocolor(*v, min, max)));
         batch.extend(vals);
     }
     if datawidth == 0 {
@@ -198,13 +236,13 @@ fn save_image(
 
 #[cfg(test)]
 mod tests {
-    use crate::normalize;
+    use crate::scale_tocolor;
     #[test]
     fn normalize_goes_up() {
         assert_eq!(
             (0..255)
                 .map(|v| v as f32)
-                .map(|v| normalize(v, 0.0, 255.0).first().cloned().unwrap())
+                .map(|v| scale_tocolor(v, 0.0, 255.0).first().cloned().unwrap())
                 .collect::<Vec<_>>(),
             (0..255).map(|v| v as u8).collect::<Vec<_>>()
         );
@@ -212,6 +250,6 @@ mod tests {
 
     #[test]
     fn normalize_max() {
-        assert_eq!(normalize(23.02, -29.4, 23.02), vec![255, 255, 50]);
+        assert_eq!(scale_tocolor(23.02, -29.4, 23.02), vec![255, 255, 50]);
     }
 }
