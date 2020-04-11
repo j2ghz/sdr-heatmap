@@ -1,8 +1,9 @@
 use csv::StringRecord;
-use csv::StringRecordsIter;
+use flate2::read::GzDecoder;
 use image::png::PNGEncoder;
 use log::*;
 use std::f32;
+use std::{cmp::Ordering, fs::File};
 
 #[derive(Debug)]
 struct Measurement {
@@ -34,56 +35,112 @@ impl Measurement {
         Measurement {
             date: record.get(0).unwrap().to_string(),
             time: record.get(1).unwrap().to_string(),
-            freq_low: record.get(2).unwrap().parse().unwrap(),
-            freq_high: record.get(3).unwrap().parse().unwrap(),
-            freq_step: record.get(4).unwrap().parse().unwrap(),
-            samples: record.get(5).unwrap().parse().unwrap(),
+            freq_low: parse(record.get(2).unwrap()).unwrap(),
+            freq_high: parse(record.get(3).unwrap()).unwrap(),
+            freq_step: parse(record.get(4).unwrap()).unwrap(),
+            samples: parse(record.get(5).unwrap()).unwrap(),
             values,
         }
     }
 }
 
-pub fn normalize(v: f32, min: f32, max: f32) -> Vec<u8> {
-    debug_assert!(v >= min);
-    debug_assert!(v <= max);
-    if v < min {
-        return vec![0, 0, 0];
-    }
-    if v > max {
-        return vec![255, 255, 255];
-    }
-    let n = (v - min) * (255.0 / (max - min));
-    debug_assert!(n >= 0.0);
-    debug_assert!(n <= 255.0);
-    vec![n as u8, n as u8, 50]
+fn parse<T: std::str::FromStr>(
+    string: &str,
+) -> std::result::Result<T, <T as std::str::FromStr>::Err> {
+    let parsed = string.parse::<T>();
+    debug_assert!(parsed.is_ok(), "Could not parse {}", string);
+    parsed
 }
 
-fn read_file(path: &str) -> csv::Reader<std::fs::File> {
+/// Places value on a scale from min to max, and transforms it to an integer scale from 0 to 255. Returns a color using the default palette.
+pub fn scale_tocolor(value: f32, min: f32, max: f32) -> Vec<u8> {
+    debug_assert!(
+        value >= min || value == f32::NEG_INFINITY,
+        "Value {} is smaller than min {}",
+        value,
+        min
+    );
+    debug_assert!(
+        value <= max || value == f32::INFINITY,
+        "Value {} is greater than max {}",
+        value,
+        max
+    );
+    if value < min {
+        return vec![0, 0, 0];
+    } else if value > max {
+        return vec![255, 255, 255];
+    } else if value == max {
+        return vec![255, 255, 50];
+    } else if value == min {
+        return vec![0, 0, 50];
+    }
+    let scaled = (value - min) * (255.0 / (max - min));
+    if scaled < 0.0 || scaled > 255.0 {
+        warn!("Computed invalid color! Value range: {} to {}, Value: {}, Color range: 0-255, Color: {}", min,max,value,scaled)
+    }
+    debug_assert!(
+        scaled >= 0.0,
+        "Scaled value is outside of range: {}",
+        scaled
+    );
+    debug_assert!(
+        scaled <= 255.0,
+        "Scaled value is outside of range: {}",
+        scaled
+    );
+    vec![scaled as u8, scaled as u8, 50]
+}
+
+fn open_file(path: &str) -> Box<dyn std::io::Read> {
+    let file = File::open(path).unwrap();
+    if path.ends_with(".gz") {
+        Box::new(GzDecoder::new(file))
+    } else {
+        Box::new(file)
+    }
+}
+
+fn read_file<T: std::io::Read>(file: T) -> csv::Reader<T> {
     csv::ReaderBuilder::new()
         .has_headers(false)
-        .from_path(path)
-        .unwrap()
+        .from_reader(file)
 }
 
 pub fn main(path: &str) {
     info!("Loading: {}", path);
-    let mut reader = read_file(path);
-    let start = reader.position().clone();
-    let (min, max) = preprocess(reader.records());
-    reader.seek(start).unwrap();
-    let (datawidth, dataheight, img) = process(reader.records(), min, max);
+    //Preprocess
+    let file = open_file(path);
+    let reader = read_file(file);
+    let (min, max) = preprocess(reader);
+    //Process
+    let file = open_file(path);
+    let reader = read_file(file);
+    let (datawidth, dataheight, img) = process(reader, min, max);
+    //Draw
     let (height, imgdata) = create_image(datawidth, dataheight, img);
     let dest = path.to_owned() + ".png";
     save_image(datawidth, height, imgdata, &dest).unwrap();
 }
 
-fn preprocess(records: StringRecordsIter<std::fs::File>) -> (f32, f32) {
+fn preprocess(reader: csv::Reader<Box<dyn std::io::Read>>) -> (f32, f32) {
     let mut min = f32::INFINITY;
     let mut max = f32::NEG_INFINITY;
-    for result in records {
+    for result in reader.into_records() {
         let mut record = result.unwrap();
         record.trim();
-        let values: Vec<f32> = record.iter().skip(6).map(|s| s.parse().unwrap()).collect();
+        let values: Vec<f32> = record
+            .iter()
+            .skip(6)
+            .map(|s| {
+                if s == "-nan" {
+                    f32::NAN
+                } else {
+                    s.parse::<f32>()
+                        .unwrap_or_else(|e| panic!("{} should be a valid float: {:?}", s, e))
+                }
+            })
+            .collect();
         for value in values {
             if value != f32::INFINITY && value != f32::NEG_INFINITY {
                 if value > max {
@@ -100,7 +157,7 @@ fn preprocess(records: StringRecordsIter<std::fs::File>) -> (f32, f32) {
 }
 
 fn process(
-    records: StringRecordsIter<std::fs::File>,
+    reader: csv::Reader<Box<dyn std::io::Read>>,
     min: f32,
     max: f32,
 ) -> (usize, usize, std::vec::Vec<u8>) {
@@ -109,7 +166,7 @@ fn process(
     let mut batch = Vec::new();
     let mut datawidth = 0;
     let mut img = Vec::new();
-    for result in records {
+    for result in reader.into_records() {
         let mut record = result.unwrap();
         record.trim();
         assert!(record.len() > 7);
@@ -125,13 +182,13 @@ fn process(
             date = m.date;
             time = m.time;
         }
-        img.extend(vals.iter().flat_map(|(_, v)| normalize(*v, min, max)));
+        img.extend(vals.iter().flat_map(|(_, v)| scale_tocolor(*v, min, max)));
         batch.extend(vals);
     }
     if datawidth == 0 {
         datawidth = batch.len()
     }
-    info!("{} {}", datawidth, batch.len());
+    info!("Img data {}x{}", datawidth, batch.len());
     (datawidth, img.len() / 3 / datawidth, img)
 }
 
@@ -145,7 +202,20 @@ fn create_image(width: usize, height: usize, mut img: Vec<u8>) -> (usize, std::v
     let mut imgdata: Vec<u8> = Vec::new();
     tape_measure(width, &mut imgdata);
     imgdata.append(&mut img);
-    (height + 26, imgdata)
+    let height = height + 26;
+    let expected_length = width * height * 3;
+    match expected_length.cmp(&imgdata.len()) {
+        Ordering::Greater => {
+            warn!("Image is missing some values, was the file cut early? Filling black.",);
+            imgdata.append(&mut vec![0; expected_length - imgdata.len()]);
+        }
+        Ordering::Less => {
+            warn!("Image has too many values, was the file cut early? Trimming.",);
+            imgdata.truncate(expected_length);
+        }
+        Ordering::Equal => {}
+    }
+    (height, imgdata)
 }
 
 fn save_image(
@@ -166,15 +236,34 @@ fn save_image(
 
 #[cfg(test)]
 mod tests {
-    use crate::normalize;
+    use crate::*;
     #[test]
     fn normalize_goes_up() {
         assert_eq!(
             (0..255)
                 .map(|v| v as f32)
-                .map(|v| normalize(v, 0.0, 255.0).first().cloned().unwrap())
+                .map(|v| scale_tocolor(v, 0.0, 255.0).first().cloned().unwrap())
                 .collect::<Vec<_>>(),
             (0..255).map(|v| v as u8).collect::<Vec<_>>()
         );
+    }
+
+    #[test]
+    fn normalize_max() {
+        assert_eq!(scale_tocolor(23.02, -29.4, 23.02), vec![255, 255, 50]);
+    }
+
+    #[test]
+    fn complete() {
+        main("samples/sample1.csv.gz")
+    }
+
+    #[test]
+    /// Should be a benchmark, but unstable
+    fn preprocess_test() {
+        let file = open_file("samples/sample1.csv.gz");
+        let reader = read_file(file);
+        let (min, max) = preprocess(reader);
+        println!("{} {}", min, max);
     }
 }
