@@ -26,7 +26,7 @@ jobs:
         command: build
         toolchain: ${{matrix.toolchain}}
         arg: --release 
-    - name: Build
+    - name: Test
       uses: actions-rs/cargo@v1.0.1
       with:
         command: test
