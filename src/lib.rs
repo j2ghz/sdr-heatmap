@@ -236,6 +236,7 @@ fn save_image(
 
 #[cfg(test)]
 mod tests {
+    use crate::main;
     use crate::scale_tocolor;
     #[test]
     fn normalize_goes_up() {
@@ -251,5 +252,10 @@ mod tests {
     #[test]
     fn normalize_max() {
         assert_eq!(scale_tocolor(23.02, -29.4, 23.02), vec![255, 255, 50]);
+    }
+
+    #[test]
+    fn complete() {
+        main("samples/sample1.csv.gz")
     }
 }
