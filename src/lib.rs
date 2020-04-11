@@ -95,9 +95,9 @@ pub fn scale_tocolor(value: f32, min: f32, max: f32) -> Vec<u8> {
 fn open_file(path: &str) -> Box<dyn std::io::Read> {
     let file = File::open(path).unwrap();
     if path.ends_with(".gz") {
-        return Box::new(GzDecoder::new(file));
+        Box::new(GzDecoder::new(file))
     } else {
-        return Box::new(file);
+        Box::new(file)
     }
 }
 
@@ -137,7 +137,7 @@ fn preprocess(reader: csv::Reader<Box<dyn std::io::Read>>) -> (f32, f32) {
                     f32::NAN
                 } else {
                     s.parse::<f32>()
-                        .expect(&format!("{} should be a valid float", s))
+                        .unwrap_or_else(|e| panic!("{} should be a valid float: {:?}", s, e))
                 }
             })
             .collect();
