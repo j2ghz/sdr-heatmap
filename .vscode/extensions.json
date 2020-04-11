@@ -10,5 +10,7 @@
 		"matklad.rust-analyzer"
 	],
 	// List of extensions recommended by VS Code that should not be recommended for users of this workspace.
-	"unwantedRecommendations": []
+	"unwantedRecommendations": [
+		"kalitaalexey.vscode-rust"
+	]
 }
