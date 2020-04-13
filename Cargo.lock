@@ -484,6 +484,7 @@ dependencies = [
  "flate2",
  "image",
  "log",
+ "rayon",
  "stderrlog",
  "walkdir",
 ]
