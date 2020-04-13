@@ -3,6 +3,7 @@ use flate2::read::GzDecoder;
 use image::png::PNGEncoder;
 use log::*;
 use std::f32;
+use std::io::prelude::*;
 use std::{cmp::Ordering, fs::File};
 
 #[derive(Debug)]
@@ -92,7 +93,7 @@ pub fn scale_tocolor(value: f32, min: f32, max: f32) -> Vec<u8> {
     vec![scaled as u8, scaled as u8, 50]
 }
 
-fn open_file(path: &str) -> Box<dyn std::io::Read> {
+pub fn open_file(path: &str) -> Box<dyn std::io::Read> {
     let file = File::open(path).unwrap();
     if path.ends_with(".gz") {
         Box::new(GzDecoder::new(file))
@@ -111,19 +112,20 @@ pub fn main(path: &str) {
     info!("Loading: {}", path);
     //Preprocess
     let file = open_file(path);
-    let reader = read_file(file);
-    let (min, max) = preprocess(reader);
+    let summary = preprocess(file);
+    info!("Color values {} to {}", summary.min, summary.max);
     //Process
     let file = open_file(path);
     let reader = read_file(file);
-    let (datawidth, dataheight, img) = process(reader, min, max);
+    let (datawidth, dataheight, img) = process(reader, summary.min, summary.max);
     //Draw
     let (height, imgdata) = create_image(datawidth, dataheight, img);
     let dest = path.to_owned() + ".png";
     save_image(datawidth, height, imgdata, &dest).unwrap();
 }
 
-fn preprocess(reader: csv::Reader<Box<dyn std::io::Read>>) -> (f32, f32) {
+pub fn preprocess(file: Box<dyn Read>) -> Summary {
+    let reader = read_file(file);
     let mut min = f32::INFINITY;
     let mut max = f32::NEG_INFINITY;
     for result in reader.into_records() {
@@ -152,8 +154,42 @@ fn preprocess(reader: csv::Reader<Box<dyn std::io::Read>>) -> (f32, f32) {
             }
         }
     }
-    info!("Color values {} to {}", min, max);
-    (min, max)
+    Summary { min, max }
+}
+
+pub struct Summary {
+    pub min: f32,
+    pub max: f32,
+}
+
+impl Summary {
+    fn empty() -> Self {
+        Self {
+            min: f32::INFINITY,
+            max: f32::NEG_INFINITY,
+        }
+    }
+}
+
+pub fn preprocess_iter(file: Box<dyn Read>) -> Summary {
+    read_file(file)
+        .into_records()
+        .filter_map(|x| match x {
+            Ok(line) => Some(line),
+            Err(e) => {
+                warn!("Error reading a line from the csv: {}", e);
+                None
+            }
+        })
+        .flat_map(|line| {
+            line.into_iter()
+                .filter_map(|x| x.parse::<f32>().ok())
+                .collect::<Vec<f32>>()
+        })
+        .fold(Summary::empty(), |s, i| Summary {
+            min: s.min.min(i),
+            max: s.max.max(i),
+        })
 }
 
 fn process(
@@ -256,14 +292,5 @@ mod tests {
     #[test]
     fn complete() {
         main("samples/sample1.csv.gz")
-    }
-
-    #[test]
-    /// Should be a benchmark, but unstable
-    fn preprocess_test() {
-        let file = open_file("samples/sample1.csv.gz");
-        let reader = read_file(file);
-        let (min, max) = preprocess(reader);
-        println!("{} {}", min, max);
     }
 }
