@@ -13,15 +13,13 @@ mod bench {
         b.iter(|| {
             let file = open_file("samples/sample1.csv.gz");
             let summary = preprocess(file);
-            println!("{} {}", summary.min, summary.max);
         });
     }
     #[bench]
-    fn preprocess_iter(b: &mut Bencher) {
+    fn preprocess_iterator(b: &mut Bencher) {
         b.iter(|| {
             let file = open_file("samples/sample1.csv.gz");
             let summary = preprocess_iter(file);
-            println!("{} {}", summary.min, summary.max);
         });
     }
 }
