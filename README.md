@@ -15,9 +15,10 @@ Another similar tool is [rtl-gopow](https://github.com/dhogborg/rtl-gopow), but 
 
 ## Speed (WIP) (v0.1.2):
 
-| Benchmark | sdr-heatmap | heatmap.py | rtl-gopow |
-| --------: | ----------: | ---------: | --------: |
-|  14 MB FM |      375 ms |    4558 ms |   1995 ms |
-| 829 MB FM |     19,37 s |   268,26 s |  141,34 s |
+| Benchmark | sdr-heatmap | heatmap.py | rtl-gopow | Notes |
+| --------: | ----------: | ---------: | --------: | ----- |
+|  14 MB FM |      375 ms |    4558 ms |   1995 ms ||
+| 829 MB FM |     19,37 s |   268,26 s |  141,34 s ||
+| 829 MB FM |      611 MB |     427 MB |   5164 MB | *using `time -v`, single run, v0.1.3* |
 
 See raw results in [bench.md](bench.md)
