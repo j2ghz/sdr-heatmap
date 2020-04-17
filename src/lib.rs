@@ -187,8 +187,8 @@ pub fn preprocess_iter(file: Box<dyn Read>) -> Summary {
                 .collect::<Vec<f32>>()
         })
         .fold(Summary::empty(), |s, i| Summary {
-            min: s.min.min(i),
-            max: s.max.max(i),
+            min: if i.is_finite() { s.min.min(i) } else { s.min },
+            max: if i.is_finite() { s.max.max(i) } else { s.max },
         })
 }
 
