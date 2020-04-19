@@ -7,17 +7,20 @@ Inspired by [heatmap.py](https://github.com/keenerd/rtl-sdr-misc/blob/master/hea
 It aims to provide better speed than heatmap.py, while keeping the same image format.
 Another similar tool is [rtl-gopow](https://github.com/dhogborg/rtl-gopow), but it produces a different (IMO inferior) image than heatmap.py.
 
-## Installation:
+## Installation
 
 `cargo install sdr-heatmap` (from [crates.io](https://crates.io/crates/sdr-heatmap))
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/sdr-heatmap.svg)](https://repology.org/project/sdr-heatmap/versions)
 
-## Speed (WIP) (v0.1.2):
+## Speed (WIP) (v0.1.2)
 
-| Benchmark | sdr-heatmap | heatmap.py | rtl-gopow |
-| --------: | ----------: | ---------: | --------: |
-|  14 MB FM |      375 ms |    4558 ms |   1995 ms |
-| 829 MB FM |     19,37 s |   268,26 s |  141,34 s |
+|     Benchmark | sdr-heatmap |       heatmap.py |        rtl-gopow | Notes                                              |
+| ------------: | ----------: | ---------------: | ---------------: | -------------------------------------------------- |
+|         14 MB |      375 ms |          4558 ms |          1995 ms |                                                    |
+| gzipped 44 MB |        14 s | failed after 3 m | gz not supported | Raspberry Pi 3B+                                   |
+|         44 MB |        17 s |            801 s |            141 s | Raspberry Pi 3B+                                   |
+|        829 MB |     19,37 s |         268,26 s |         141,34 s |                                                    |
+|        829 MB |      611 MB |           427 MB |          5164 MB | _Peak memory, using `time -v`, single run, v0.1.3_ |
 
 See raw results in [bench.md](bench.md)
