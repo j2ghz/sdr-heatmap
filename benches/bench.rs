@@ -7,7 +7,7 @@ use std::{
 
 fn read_file_to_memory() -> std::boxed::Box<std::io::Cursor<std::vec::Vec<u8>>> {
     let mut buf = Vec::new();
-    let mut file = open_file("samples/sample1.csv.gz");
+    let mut file = open_file("samples/bench1.csv.gz");
     let _ = file.read_to_end(&mut buf);
 
     Box::new(Cursor::new(buf))
