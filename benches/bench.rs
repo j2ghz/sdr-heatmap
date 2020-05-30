@@ -1,25 +1,36 @@
-#![cfg_attr(feature = "unstable", feature(test))]
+use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
+use sdr_heatmap::{open_file, preprocess, preprocess_iter};
+use std::{time::Duration, io::{Cursor, Read}};
 
-#[cfg(all(feature = "unstable", test))]
-mod bench {
+fn read_file_to_memory() -> std::boxed::Box<std::io::Cursor<std::vec::Vec<u8>>> {
+    let mut buf = Vec::new();
+    let mut file = open_file("samples/sample1.csv.gz");
+    let _ = file.read_to_end(&mut buf);
 
-    extern crate test;
-
-    use sdr_heatmap::*;
-    use test::Bencher;
-
-    #[bench]
-    fn preprocess_basic(b: &mut Bencher) {
-        b.iter(|| {
-            let file = open_file("samples/sample1.csv.gz");
-            let summary = preprocess(file);
-        });
-    }
-    #[bench]
-    fn preprocess_iterator(b: &mut Bencher) {
-        b.iter(|| {
-            let file = open_file("samples/sample1.csv.gz");
-            let summary = preprocess_iter(file);
-        });
-    }
+    Box::new(Cursor::new(buf))
 }
+
+fn preprocess_bench(c: &mut Criterion) {
+    let mut group = c.benchmark_group("preprocess implementations");
+
+    group.throughput(Throughput::Bytes(46474948));
+    group.measurement_time(Duration::from_secs(60));
+    group.sample_size(10);
+
+    group.bench_function("basic", |b| {
+        b.iter_with_large_setup(read_file_to_memory, |data| {
+            let summary = preprocess(data);
+            black_box(summary);
+        })
+    });
+    group.bench_function("iterator", |b| {
+        b.iter_with_large_setup(read_file_to_memory, |data| {
+            let summary = preprocess_iter(data);
+            black_box(summary);
+        })
+    });
+    group.finish();
+}
+
+criterion_group!(benches, preprocess_bench);
+criterion_main!(benches);
