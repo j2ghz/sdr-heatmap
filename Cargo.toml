@@ -1,28 +1,33 @@
+[[bench]]
+name = 'bench'
+harness = false
+
 [package]
-name = "sdr-heatmap"
-version = "0.1.3"
-authors = ["J2ghz <j2.00ghz@gmail.com>"]
-edition = "2018"
-description = "Generates images from rtl_power csv files"
-license = "AGPL-3.0-or-later"
-repository = "https://github.com/j2ghz/sdr-heatmap/"
-readme = "README.md"
-keywords = ["sdr", "rtl-sdr", "rtl_power"]
-categories = ["command-line-utilities"]
-exclude = [
-    "samples/*",
+name = 'sdr-heatmap'
+version = '0.1.3'
+authors = ['J2ghz <j2.00ghz@gmail.com>']
+edition = '2018'
+description = 'Generates images from rtl_power csv files'
+license = 'AGPL-3.0-or-later'
+repository = 'https://github.com/j2ghz/sdr-heatmap/'
+readme = 'README.md'
+keywords = [
+    'sdr',
+    'rtl-sdr',
+    'rtl_power',
 ]
+categories = ['command-line-utilities']
+exclude = ['samples/*']
 
-
-[features]
-unstable = []
+[dev-dependencies]
+criterion = '0.3'
 
 [dependencies]
-csv = "1.1.3"
-image="0.23.4"
-clap="2.33.1"
-log="0.4.8"
-stderrlog="0.4.3"
-walkdir = "2"
-flate2 = "1.0.14"
-rayon = "1.3.0"
+csv = '1.1.3'
+image = '0.23.4'
+clap = '2.33.1'
+log = '0.4.8'
+stderrlog = '0.4.3'
+walkdir = '2'
+flate2 = '1.0.14'
+rayon = '1.3.0'
