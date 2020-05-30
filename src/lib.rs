@@ -2,7 +2,6 @@ use csv::StringRecord;
 use flate2::read::GzDecoder;
 use image::png::PNGEncoder;
 use log::*;
-use quantiles::ckms::CKMS;
 use std::f32;
 use std::io::prelude::*;
 use std::{cmp::Ordering, fs::File};
@@ -203,43 +202,6 @@ pub fn preprocess_iter(file: Box<dyn Read>) -> Summary {
         })
 }
 
-pub fn preprocess_ckms(file: Box<dyn Read>) -> Summary {
-    let values = read_file(file)
-        .into_records()
-        .filter_map(|x| match x {
-            Ok(line) => Some(line),
-            Err(e) => {
-                warn!("Error reading a line from the csv: {}", e);
-                None
-            }
-        })
-        .flat_map(|line| {
-            line.into_iter()
-                .skip(6)
-                .map(|s| {
-                    if s == "-nan" {
-                        f32::NAN
-                    } else {
-                        s.trim().parse::<f32>().unwrap_or_else(|e| {
-                            panic!("'{}' should be a valid float: '{:?}'", s, e)
-                        })
-                    }
-                })
-                .collect::<Vec<f32>>()
-        });
-    let mut ckms = CKMS::<f32>::new(0.1);
-    for i in values {
-        ckms.insert(i);
-    }
-    let min = ckms.query(0.01);
-    let max = ckms.query(0.99);
-    println!("min: {:?} max: {:?}", min, max);
-    Summary {
-        min: min.unwrap().1,
-        max: max.unwrap().1,
-    }
-}
-
 fn process(
     reader: csv::Reader<Box<dyn std::io::Read>>,
     min: f32,
@@ -352,18 +314,6 @@ mod tests {
     #[test]
     fn preprocess_iter_result() {
         let res = preprocess_iter(open_file("samples/sample1.csv.gz"));
-        assert_eq!(
-            res,
-            Summary {
-                min: -29.4,
-                max: 21.35
-            }
-        );
-    }
-
-    #[test]
-    fn preprocess_ckms_result() {
-        let res = preprocess_ckms(open_file("samples/sample1.csv.gz"));
         assert_eq!(
             res,
             Summary {
