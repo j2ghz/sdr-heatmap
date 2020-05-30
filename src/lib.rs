@@ -233,7 +233,7 @@ pub fn preprocess_ckms(file: Box<dyn Read>) -> Summary {
     }
     let min = ckms.query(0.01);
     let max = ckms.query(0.99);
-    println!("min: {:?} max: {:?}",min,max);
+    println!("min: {:?} max: {:?}", min, max);
     Summary {
         min: min.unwrap().1,
         max: max.unwrap().1,
