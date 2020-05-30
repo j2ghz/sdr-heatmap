@@ -26,9 +26,9 @@ fn get_file_size(filename: &str) -> u64 {
 
 fn preprocess_bench(c: &mut Criterion) {
     let mut group = c.benchmark_group("preprocess implementations");
-    for file in ["samples/bench1.csv.gz", "samples/sample1.csv.gz"].iter() {
+    for file in ["samples/0-1row.csv"].iter() {
         group.throughput(Throughput::Bytes(get_file_size(file)));
-        group.sample_size(10);
+        //group.sample_size(10);
         group.bench_with_input(BenchmarkId::new("basic", file), file, |b, file| {
             b.iter_with_large_setup(
                 || read_file_to_memory(file),
