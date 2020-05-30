@@ -2,6 +2,7 @@ use csv::StringRecord;
 use flate2::read::GzDecoder;
 use image::png::PNGEncoder;
 use log::*;
+use quantiles::ckms::CKMS;
 use std::f32;
 use std::io::prelude::*;
 use std::{cmp::Ordering, fs::File};
@@ -112,7 +113,7 @@ pub fn main(path: &str) {
     info!("Loading: {}", path);
     //Preprocess
     let file = open_file(path);
-    let summary = preprocess_iter(file);
+    let summary = preprocess(file);
     info!("Color values {} to {}", summary.min, summary.max);
     //Process
     let file = open_file(path);
@@ -157,6 +158,7 @@ pub fn preprocess(file: Box<dyn Read>) -> Summary {
     Summary { min, max }
 }
 
+#[derive(PartialEq, Debug)]
 pub struct Summary {
     pub min: f32,
     pub max: f32,
@@ -183,13 +185,60 @@ pub fn preprocess_iter(file: Box<dyn Read>) -> Summary {
         })
         .flat_map(|line| {
             line.into_iter()
-                .filter_map(|x| x.parse::<f32>().ok())
+                .skip(6)
+                .map(|s| {
+                    if s == "-nan" {
+                        f32::NAN
+                    } else {
+                        s.trim().parse::<f32>().unwrap_or_else(|e| {
+                            panic!("'{}' should be a valid float: '{:?}'", s, e)
+                        })
+                    }
+                })
                 .collect::<Vec<f32>>()
         })
         .fold(Summary::empty(), |s, i| Summary {
             min: if i.is_finite() { s.min.min(i) } else { s.min },
             max: if i.is_finite() { s.max.max(i) } else { s.max },
         })
+}
+
+pub fn preprocess_ckms(file: Box<dyn Read>) -> Summary {
+    let values = read_file(file)
+        .into_records()
+        .filter_map(|x| match x {
+            Ok(line) => Some(line),
+            Err(e) => {
+                warn!("Error reading a line from the csv: {}", e);
+                None
+            }
+        })
+        .flat_map(|line| {
+            line.into_iter()
+                .skip(6)
+                .map(|s| {
+                    if s == "-nan" {
+                        f32::NAN
+                    } else {
+                        s.trim().parse::<f32>().unwrap_or_else(|e| {
+                            panic!("'{}' should be a valid float: '{:?}'", s, e)
+                        })
+                    }
+                })
+                .collect::<Vec<f32>>()
+        });
+    let mut ckms = CKMS::<f32>::new(1.0);
+    for i in values {
+        println!("Adding {:?}", i);
+        ckms.insert(i);
+    }
+    println!("Count: {:?}", ckms.count());
+    let min = ckms.query(0.05);
+    let max = ckms.query(0.95);
+    Summary {
+        min: min.unwrap().1,
+        max: max.unwrap().1,
+    }
 }
 
 fn process(
@@ -287,6 +336,42 @@ mod tests {
     #[test]
     fn normalize_max() {
         assert_eq!(scale_tocolor(23.02, -29.4, 23.02), vec![255, 255, 50]);
+    }
+
+    #[test]
+    fn preprocess_result() {
+        let res = preprocess(open_file("samples/sample1.csv.gz"));
+        assert_eq!(
+            res,
+            Summary {
+                min: -29.4,
+                max: 21.35
+            }
+        );
+    }
+
+    #[test]
+    fn preprocess_iter_result() {
+        let res = preprocess_iter(open_file("samples/sample1.csv.gz"));
+        assert_eq!(
+            res,
+            Summary {
+                min: -29.4,
+                max: 21.35
+            }
+        );
+    }
+
+    #[test]
+    fn preprocess_ckms_result() {
+        let res = preprocess_ckms(open_file("samples/sample1.csv.gz"));
+        assert_eq!(
+            res,
+            Summary {
+                min: -29.4,
+                max: 21.35
+            }
+        );
     }
 
     #[test]
