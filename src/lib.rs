@@ -2,7 +2,7 @@ use csv::StringRecord;
 use flate2::read::GzDecoder;
 use image::png::PNGEncoder;
 use log::*;
-use rayon::{iter::IterBridge, prelude::*};
+use rayon::prelude::*;
 use std::f32;
 use std::io::prelude::*;
 use std::{cmp::Ordering, fs::File};
@@ -57,6 +57,33 @@ impl Summary {
         Self {
             min: f32::INFINITY,
             max: f32::NEG_INFINITY,
+        }
+    }
+
+    fn combine_f32(s: Self, i: f32) -> Self {
+        Summary::combine(s, Summary { min: i, max: i })
+    }
+
+    fn combine(a: Self, b: Self) -> Self {
+        Self {
+            min: {
+                let a = a.min;
+                let b = b.min;
+                if a.is_finite() {
+                    a.min(b)
+                } else {
+                    b
+                }
+            },
+            max: {
+                let a = a.max;
+                let b = b.max;
+                if a.is_finite() {
+                    a.max(b)
+                } else {
+                    b
+                }
+            },
         }
     }
 }
@@ -197,10 +224,7 @@ pub fn preprocess_iter(file: Box<dyn Read>) -> Summary {
                 })
                 .collect::<Vec<f32>>()
         })
-        .fold(Summary::empty(), |s, i| Summary {
-            min: if i.is_finite() { s.min.min(i) } else { s.min },
-            max: if i.is_finite() { s.max.max(i) } else { s.max },
-        })
+        .fold(Summary::empty(), Summary::combine_f32)
 }
 
 pub fn preprocess_par_iter(file: Box<dyn Read>) -> Summary {
@@ -219,27 +243,20 @@ pub fn preprocess_par_iter(file: Box<dyn Read>) -> Summary {
         .flat_map(|line| {
             line.into_iter()
                 .skip(6)
-                .map(|s| s.to_owned())                
+                .map(|s| s.to_owned())
                 .collect::<Vec<String>>()
         })
-        
         .map(|s| {
             if s == "-nan" {
                 f32::NAN
             } else {
-                s.trim().parse::<f32>().unwrap_or_else(|e| {
-                    panic!("'{}' should be a valid float: '{:?}'", s, e)
-                })
+                s.trim()
+                    .parse::<f32>()
+                    .unwrap_or_else(|e| panic!("'{}' should be a valid float: '{:?}'", s, e))
             }
         })
-        .fold(|| Summary::empty(), |s, i| Summary {
-            min: if i.is_finite() { s.min.min(i) } else { s.min },
-            max: if i.is_finite() { s.max.max(i) } else { s.max },
-        })
-        .reduce(||Summary::empty(),|a, b| Summary {
-            min: if a.min < b.min {a.min} else {b.min},
-            max: if a.max < b.max {a.max} else {b.max},
-        } )
+        .fold(|| Summary::empty(), Summary::combine_f32)
+        .reduce(|| Summary::empty(), Summary::combine)
 }
 
 fn process(
@@ -354,6 +371,18 @@ mod tests {
     #[test]
     fn preprocess_iter_result() {
         let res = preprocess_iter(open_file("samples/sample1.csv.gz"));
+        assert_eq!(
+            res,
+            Summary {
+                min: -29.4,
+                max: 21.35
+            }
+        );
+    }
+
+    #[test]
+    fn preprocess_par_iter_result() {
+        let res = preprocess_par_iter(open_file("samples/sample1.csv.gz"));
         assert_eq!(
             res,
             Summary {
