@@ -1,6 +1,9 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
 use sdr_heatmap::{open_file, preprocess, preprocess_iter};
-use std::{time::Duration, io::{Cursor, Read}};
+use std::{
+    io::{Cursor, Read},
+    time::Duration,
+};
 
 fn read_file_to_memory() -> std::boxed::Box<std::io::Cursor<std::vec::Vec<u8>>> {
     let mut buf = Vec::new();
