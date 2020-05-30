@@ -227,14 +227,13 @@ pub fn preprocess_ckms(file: Box<dyn Read>) -> Summary {
                 })
                 .collect::<Vec<f32>>()
         });
-    let mut ckms = CKMS::<f32>::new(1.0);
+    let mut ckms = CKMS::<f32>::new(0.1);
     for i in values {
-        println!("Adding {:?}", i);
         ckms.insert(i);
     }
-    println!("Count: {:?}", ckms.count());
-    let min = ckms.query(0.05);
-    let max = ckms.query(0.95);
+    let min = ckms.query(0.01);
+    let max = ckms.query(0.99);
+    println!("min: {:?} max: {:?}",min,max);
     Summary {
         min: min.unwrap().1,
         max: max.unwrap().1,
