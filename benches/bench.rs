@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
-use sdr_heatmap::{open_file, preprocess, preprocess_iter};
+use sdr_heatmap::{open_file, preprocess, preprocess_iter, preprocess_par_iter};
 use std::{
     io::{Cursor, Read},
     time::Duration,
@@ -29,6 +29,12 @@ fn preprocess_bench(c: &mut Criterion) {
     group.bench_function("iterator", |b| {
         b.iter_with_large_setup(read_file_to_memory, |data| {
             let summary = preprocess_iter(data);
+            black_box(summary);
+        })
+    });
+    group.bench_function("par_iterator", |b| {
+        b.iter_with_large_setup(read_file_to_memory, |data| {
+            let summary = preprocess_par_iter(data);
             black_box(summary);
         })
     });

@@ -2,6 +2,7 @@ use csv::StringRecord;
 use flate2::read::GzDecoder;
 use image::png::PNGEncoder;
 use log::*;
+use rayon::{iter::IterBridge, prelude::*};
 use std::f32;
 use std::io::prelude::*;
 use std::{cmp::Ordering, fs::File};
@@ -41,6 +42,21 @@ impl Measurement {
             freq_step: parse(record.get(4).unwrap()).unwrap(),
             samples: parse(record.get(5).unwrap()).unwrap(),
             values,
+        }
+    }
+}
+
+#[derive(PartialEq, Debug)]
+pub struct Summary {
+    pub min: f32,
+    pub max: f32,
+}
+
+impl Summary {
+    fn empty() -> Self {
+        Self {
+            min: f32::INFINITY,
+            max: f32::NEG_INFINITY,
         }
     }
 }
@@ -157,21 +173,6 @@ pub fn preprocess(file: Box<dyn Read>) -> Summary {
     Summary { min, max }
 }
 
-#[derive(PartialEq, Debug)]
-pub struct Summary {
-    pub min: f32,
-    pub max: f32,
-}
-
-impl Summary {
-    fn empty() -> Self {
-        Self {
-            min: f32::INFINITY,
-            max: f32::NEG_INFINITY,
-        }
-    }
-}
-
 pub fn preprocess_iter(file: Box<dyn Read>) -> Summary {
     read_file(file)
         .into_records()
@@ -200,6 +201,45 @@ pub fn preprocess_iter(file: Box<dyn Read>) -> Summary {
             min: if i.is_finite() { s.min.min(i) } else { s.min },
             max: if i.is_finite() { s.max.max(i) } else { s.max },
         })
+}
+
+pub fn preprocess_par_iter(file: Box<dyn Read>) -> Summary {
+    read_file(file)
+        .into_records()
+        .collect::<Vec<_>>()
+        .into_iter()
+        .par_bridge()
+        .filter_map(|x| match x {
+            Ok(line) => Some(line),
+            Err(e) => {
+                warn!("Error reading a line from the csv: {}", e);
+                None
+            }
+        })
+        .flat_map(|line| {
+            line.into_iter()
+                .skip(6)
+                .map(|s| s.to_owned())                
+                .collect::<Vec<String>>()
+        })
+        
+        .map(|s| {
+            if s == "-nan" {
+                f32::NAN
+            } else {
+                s.trim().parse::<f32>().unwrap_or_else(|e| {
+                    panic!("'{}' should be a valid float: '{:?}'", s, e)
+                })
+            }
+        })
+        .fold(|| Summary::empty(), |s, i| Summary {
+            min: if i.is_finite() { s.min.min(i) } else { s.min },
+            max: if i.is_finite() { s.max.max(i) } else { s.max },
+        })
+        .reduce(||Summary::empty(),|a, b| Summary {
+            min: if a.min < b.min {a.min} else {b.min},
+            max: if a.max < b.max {a.max} else {b.max},
+        } )
 }
 
 fn process(
