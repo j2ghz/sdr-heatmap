@@ -38,7 +38,6 @@ fn preprocess_bench(c: &mut Criterion) {
             black_box(summary);
         })
     });
-    
 
     group.finish();
 }
