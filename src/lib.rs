@@ -102,7 +102,7 @@ pub fn open_file(path: &str) -> Box<dyn std::io::Read> {
     }
 }
 
-fn read_file<T: std::io::Read>(file:  T) -> csv::Reader<T> {
+fn read_file<T: std::io::Read>(file: T) -> csv::Reader<T> {
     csv::ReaderBuilder::new()
         .has_headers(false)
         .from_reader(file)
