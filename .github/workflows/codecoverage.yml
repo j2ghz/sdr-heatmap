@@ -7,10 +7,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
+        
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
           override: true
+
       - uses: actions-rs/cargo@v1
         with:
           command: test
@@ -18,12 +20,16 @@ jobs:
         env:
           CARGO_INCREMENTAL: '0'
           RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
-      - uses: actions-rs/grcov@v0.1
+
+      - uses: actions-rs/grcov@v0.1.5
+        id: coverage  
+
       - name: Coveralls upload
-        uses: coverallsapp/github-action@master
+        uses: coverallsapp/github-action@v1.1.1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-lcov: ${{ steps.coverage.outputs.report }}
+          path-to-lcov: ${{ steps.coverage.outputs.report }} 
+
       - uses: codecov/codecov-action@v1
         with:
           file: ${{ steps.coverage.outputs.report }}
