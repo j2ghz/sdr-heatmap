@@ -27,7 +27,7 @@ fn get_file_size(filename: &str) -> u64 {
 
 fn preprocess_bench(c: &mut Criterion) {
     let mut group = c.benchmark_group("preprocess implementations");
-    for file in ["samples/0-1row.csv","samples/bench1.csv.gz"].iter() {
+    for file in ["samples/0-1row.csv", "samples/bench1.csv.gz"].iter() {
         let size = get_file_size(file);
         if size > 10000 {
             group.sample_size(10);
