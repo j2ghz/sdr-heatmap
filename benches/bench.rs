@@ -31,14 +31,15 @@ fn preprocess_bench(c: &mut Criterion) {
         "samples/test0.csv.gz",
         "samples/test1.csv.gz",
         "samples/test2.csv.gz",
-        "samples/bench1.csv.gz"
+        "samples/test3.csv.gz",
+        "samples/test4.csv.gz",
+        "samples/test5.csv.gz",
+        "samples/bench1.csv.gz",
     ]
     .iter()
     {
         let size = get_file_size(file);
-        if size > 1000000 {
-            group.sample_size(10);
-        }
+        group.sample_size(10);
         group.throughput(Throughput::Bytes(size));
         group.bench_with_input(BenchmarkId::new("basic", file), file, |b, file| {
             b.iter_with_large_setup(
