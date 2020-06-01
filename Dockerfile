@@ -12,15 +12,17 @@ RUN rustup target add x86_64-unknown-linux-musl
 
 WORKDIR /usr/src/sdr-heatmap
 
-COPY Cargo.toml Cargo.toml
+# COPY Cargo.toml Cargo.toml
 
-RUN mkdir src/
+# RUN mkdir src/ src/benches/
 
-RUN echo "fn main() {println!(\"if you see this, the build broke\")}" > src/main.rs
+# RUN echo "fn main() {println!(\"if you see this, the build broke\")}" > src/main.rs
 
-RUN RUSTFLAGS=-Clinker=musl-gcc cargo build --release --target=x86_64-unknown-linux-musl
+# RUN touch src/benches/bench.rs
 
-RUN rm -f target/x86_64-unknown-linux-musl/release/deps/sdr-heatmap*
+# RUN RUSTFLAGS=-Clinker=musl-gcc cargo build --release --target=x86_64-unknown-linux-musl
+
+# RUN rm -f target/x86_64-unknown-linux-musl/release/deps/sdr-heatmap*
 
 COPY . .
 
