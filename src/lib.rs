@@ -173,8 +173,11 @@ pub fn preprocess(file: Box<dyn Read>) -> Summary {
     let mut min = f32::INFINITY;
     let mut max = f32::NEG_INFINITY;
     for result in reader.into_records() {
-        let mut record = result.unwrap();
-        record.trim();
+        let record = {
+            let mut x = result.unwrap();
+            x.trim();
+            x
+        };
         let values: Vec<f32> = record
             .iter()
             .skip(6)
@@ -204,13 +207,7 @@ pub fn preprocess(file: Box<dyn Read>) -> Summary {
 pub fn preprocess_iter(file: Box<dyn Read>) -> Summary {
     read_file(file)
         .into_records()
-        .filter_map(|x| match x {
-            Ok(line) => Some(line),
-            Err(e) => {
-                warn!("Error reading a line from the csv: {}", e);
-                None
-            }
-        })
+        .map(|x| x.unwrap())
         .flat_map(|line| {
             line.into_iter()
                 .skip(6)
@@ -234,13 +231,7 @@ pub fn preprocess_par_iter(file: Box<dyn Read>) -> Summary {
         .collect::<Vec<_>>()
         .into_iter()
         .par_bridge()
-        .filter_map(|x| match x {
-            Ok(line) => Some(line),
-            Err(e) => {
-                warn!("Error reading a line from the csv: {}", e);
-                None
-            }
-        })
+        .map(|x| x.unwrap())
         .flat_map(|line| {
             line.into_iter()
                 .skip(6)
