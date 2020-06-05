@@ -139,7 +139,7 @@ pub fn scale_tocolor(value: f32, min: f32, max: f32) -> Vec<u8> {
 
 pub fn open_file(path: &Path) -> Box<dyn std::io::Read> {
     let file = File::open(path).unwrap();
-    if path.ends_with(".gz") {
+    if path.extension().unwrap() == "gz" {
         Box::new(GzDecoder::new(file))
     } else {
         Box::new(file)
