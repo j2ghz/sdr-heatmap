@@ -341,6 +341,7 @@ fn save_image(
 #[cfg(test)]
 mod tests {
     use crate::*;
+    use pretty_assertions::{assert_eq, assert_ne};
     #[test]
     fn normalize_goes_up() {
         assert_eq!(
