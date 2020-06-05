@@ -1,6 +1,6 @@
 use clap::{App, Arg};
-use walkdir::WalkDir;
 use std::path::Path;
+use walkdir::WalkDir;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const NAME: &str = env!("CARGO_PKG_NAME");
