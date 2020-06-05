@@ -2,9 +2,9 @@ name: Build & Test on Stable,Beta,Nightly
 
 on:
   push:
-    branches: [ master ]
-  pull_request:
     branches: [ master, develop ]
+  pull_request:
+    branches: [ master ]
 
 jobs:
   build:
