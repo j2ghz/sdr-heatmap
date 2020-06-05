@@ -5,6 +5,7 @@ use log::*;
 use rayon::prelude::*;
 use std::f32;
 use std::io::prelude::*;
+use std::path::Path;
 use std::{cmp::Ordering, fs::File};
 
 #[derive(Debug)]
@@ -136,7 +137,7 @@ pub fn scale_tocolor(value: f32, min: f32, max: f32) -> Vec<u8> {
     vec![scaled as u8, scaled as u8, 50]
 }
 
-pub fn open_file(path: &str) -> Box<dyn std::io::Read> {
+pub fn open_file(path: &Path) -> Box<dyn std::io::Read> {
     let file = File::open(path).unwrap();
     if path.ends_with(".gz") {
         Box::new(GzDecoder::new(file))
@@ -151,8 +152,8 @@ fn read_file<T: std::io::Read>(file: T) -> csv::Reader<T> {
         .from_reader(file)
 }
 
-pub fn main(path: &str) {
-    info!("Loading: {}", path);
+pub fn main(path: &Path) {
+    info!("Loading: {}", path.display());
     //Preprocess
     let file = open_file(path);
     let summary = preprocess(file);
@@ -163,8 +164,8 @@ pub fn main(path: &str) {
     let (datawidth, dataheight, img) = process(reader, summary.min, summary.max);
     //Draw
     let (height, imgdata) = create_image(datawidth, dataheight, img);
-    let dest = path.to_owned() + ".png";
-    save_image(datawidth, height, imgdata, &dest).unwrap();
+    let dest = path.with_extension(".png");
+    save_image(datawidth, height, imgdata, dest.to_str().unwrap()).unwrap();
 }
 
 pub fn preprocess(file: Box<dyn Read>) -> Summary {
@@ -358,7 +359,7 @@ mod tests {
 
     #[test]
     fn preprocess_result() {
-        let res = preprocess(open_file("samples/sample1.csv.gz"));
+        let res = preprocess(open_file(Path::new("samples/sample1.csv.gz")));
         assert_eq!(
             res,
             Summary {
@@ -370,7 +371,7 @@ mod tests {
 
     #[test]
     fn preprocess_iter_result() {
-        let res = preprocess_iter(open_file("samples/sample1.csv.gz"));
+        let res = preprocess_iter(open_file(Path::new("samples/sample1.csv.gz")));
         assert_eq!(
             res,
             Summary {
@@ -382,7 +383,7 @@ mod tests {
 
     #[test]
     fn preprocess_par_iter_result() {
-        let res = preprocess_par_iter(open_file("samples/sample1.csv.gz"));
+        let res = preprocess_par_iter(open_file(Path::new("samples/sample1.csv.gz")));
         assert_eq!(
             res,
             Summary {
@@ -394,6 +395,6 @@ mod tests {
 
     #[test]
     fn complete() {
-        main("samples/sample1.csv.gz")
+        main(Path::new("samples/sample1.csv.gz"))
     }
 }
