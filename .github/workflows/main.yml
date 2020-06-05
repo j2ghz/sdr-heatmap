@@ -1,8 +1,8 @@
-name: Build & Test on Stable,Beta,Nightly
+name: Build & Test
 
 on:
   push:
-    branches: [ master, develop ]
+    branches: [ master ]
   pull_request:
     branches: [ master ]
 
