@@ -7,6 +7,9 @@ use std::f32;
 use std::io::prelude::*;
 use std::path::Path;
 use std::{cmp::Ordering, fs::File};
+pub mod colors;
+use colors::scale_tocolor;
+use colors::Palettes;
 
 #[derive(Debug)]
 struct Measurement {
@@ -95,46 +98,6 @@ fn parse<T: std::str::FromStr>(
     let parsed = string.parse::<T>();
     debug_assert!(parsed.is_ok(), "Could not parse {}", string);
     parsed
-}
-
-/// Places value on a scale from min to max, and transforms it to an integer scale from 0 to 255. Returns a color using the default palette.
-pub fn scale_tocolor(value: f32, min: f32, max: f32) -> Vec<u8> {
-    debug_assert!(
-        value >= min || value == f32::NEG_INFINITY,
-        "Value {} is smaller than min {}",
-        value,
-        min
-    );
-    debug_assert!(
-        value <= max || value == f32::INFINITY,
-        "Value {} is greater than max {}",
-        value,
-        max
-    );
-    if value < min {
-        return vec![0, 0, 0];
-    } else if value > max {
-        return vec![255, 255, 255];
-    } else if value == max {
-        return vec![255, 255, 50];
-    } else if value == min {
-        return vec![0, 0, 50];
-    }
-    let scaled = (value - min) * (255.0 / (max - min));
-    if scaled < 0.0 || scaled > 255.0 {
-        warn!("Computed invalid color! Value range: {} to {}, Value: {}, Color range: 0-255, Color: {}", min,max,value,scaled)
-    }
-    debug_assert!(
-        scaled >= 0.0,
-        "Scaled value is outside of range: {}",
-        scaled
-    );
-    debug_assert!(
-        scaled <= 255.0,
-        "Scaled value is outside of range: {}",
-        scaled
-    );
-    vec![scaled as u8, scaled as u8, 50]
 }
 
 pub fn open_file(path: &Path) -> Box<dyn std::io::Read> {
@@ -247,8 +210,8 @@ pub fn preprocess_par_iter(file: Box<dyn Read>) -> Summary {
                     .unwrap_or_else(|e| panic!("'{}' should be a valid float: '{:?}'", s, e))
             }
         })
-        .fold(|| Summary::empty(), Summary::combine_f32)
-        .reduce(|| Summary::empty(), Summary::combine)
+        .fold(Summary::empty, Summary::combine_f32)
+        .reduce(Summary::empty, Summary::combine)
 }
 
 fn process(
@@ -258,7 +221,7 @@ fn process(
 ) -> (usize, usize, std::vec::Vec<u8>) {
     let mut date: String = "".to_string();
     let mut time: String = "".to_string();
-    let mut batch = Vec::new();
+    let mut batch = 0;
     let mut datawidth = 0;
     let mut img = Vec::new();
     for result in reader.into_records() {
@@ -270,20 +233,23 @@ fn process(
         if date == m.date && time == m.time {
         } else {
             if datawidth == 0 {
-                datawidth = batch.len()
+                datawidth = batch;
             }
-            debug_assert_eq! {datawidth,batch.len()}
-            batch.clear();
+            debug_assert_eq! {datawidth,batch}
+            batch = 0;
             date = m.date;
             time = m.time;
         }
-        img.extend(vals.iter().flat_map(|(_, v)| scale_tocolor(*v, min, max)));
-        batch.extend(vals);
+        for (_, v) in vals {
+            let pixel = scale_tocolor(Palettes::Default, v, min, max);
+            img.extend(pixel.iter());
+            batch += 1;
+        }
     }
     if datawidth == 0 {
-        datawidth = batch.len()
+        datawidth = batch;
     }
-    info!("Img data {}x{}", datawidth, batch.len());
+    info!("Img data {}x{}", datawidth, batch);
     (datawidth, img.len() / 3 / datawidth, img)
 }
 
@@ -338,7 +304,10 @@ mod tests {
         assert_eq!(
             (0..255)
                 .map(|v| v as f32)
-                .map(|v| scale_tocolor(v, 0.0, 255.0).first().cloned().unwrap())
+                .map(|v| scale_tocolor(Palettes::Default, v, 0.0, 255.0)
+                    .first()
+                    .cloned()
+                    .unwrap())
                 .collect::<Vec<_>>(),
             (0..255).map(|v| v as u8).collect::<Vec<_>>()
         );
@@ -346,7 +315,10 @@ mod tests {
 
     #[test]
     fn normalize_max() {
-        assert_eq!(scale_tocolor(23.02, -29.4, 23.02), vec![255, 255, 50]);
+        assert_eq!(
+            scale_tocolor(Palettes::Default, 23.02, -29.4, 23.02),
+            [255, 255, 50]
+        );
     }
 
     #[test]
