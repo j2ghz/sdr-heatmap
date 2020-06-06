@@ -1,4 +1,5 @@
 use clap::{App, Arg};
+use std::path::Path;
 use walkdir::WalkDir;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -45,15 +46,15 @@ fn main() {
         .init()
         .unwrap();
 
-    let input = matches.value_of("INPUT").unwrap();
+    let input = Path::new(matches.value_of("INPUT").unwrap());
     let exts = vec![".csv", ".csv.gz"];
 
     if matches.is_present("recursive") {
         for entry in WalkDir::new(input) {
             let entry = entry.unwrap();
-            let name = entry.file_name().to_string_lossy();
+            let name = entry.file_name().to_str().unwrap();
             if exts.iter().any(|ext| name.ends_with(ext)) {
-                sdr_heatmap::main(entry.path().to_str().unwrap());
+                sdr_heatmap::main(entry.path());
             }
         }
     } else {

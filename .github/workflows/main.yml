@@ -1,10 +1,10 @@
-name: Build & Test on Stable,Beta,Nightly
+name: Build & Test
 
 on:
   push:
     branches: [ master ]
   pull_request:
-    branches: [ master, develop ]
+    branches: [ master ]
 
 jobs:
   build:

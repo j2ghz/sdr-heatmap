@@ -1,3 +1,15 @@
+# Archives
+
+*.7z    binary
+*.cab   binary
+*.ear   binary
+*.gz    binary diff=exif
+*.jar   binary
+*.rar   binary diff=exif
+*.tar   binary
+*.tgz   binary
+*.war   binary
+*.zip   binary diff=exif
 *.png filter=lfs diff=lfs merge=lfs -text
 0.csv filter=lfs diff=lfs merge=lfs -text
 samples/* filter=lfs diff=lfs merge=lfs -text
