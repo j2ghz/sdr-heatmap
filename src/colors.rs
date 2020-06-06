@@ -99,13 +99,14 @@ mod tests {
     }
     proptest! {
         #[test]
-        fn scale_tocolor_within_bounds(a in proptest::num::f32::ANY,b  in proptest::num::f32::ANY, c in proptest::num::f32::ANY) {
+        fn scale_tocolor_within_bounds(
+            a in proptest::num::f32::ANY,
+            b in proptest::num::f32::ANY,
+            c in proptest::num::f32::ANY)
+          {
             let min = a.min(b).min(c);
-            let mid = a.max(b).min(c);
+            let mid = a.min(b).max( a.max(b).min(c));
             let max = a.max(b).max(c);
-            assert!(min<=mid)            ;
-            assert!(mid<=max);
-            assert!(min<=max);
             scale_tocolor(Palettes::Default,mid,min,max);
         }
     }
