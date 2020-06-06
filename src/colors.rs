@@ -98,15 +98,16 @@ mod tests {
         );
     }
     proptest! {
-          #![proptest_config(ProptestConfig {
-      cases: 10000, .. ProptestConfig::default()
-    })]
-          #[test]
-          fn scale_tocolor_within_bounds(a in proptest::num::f32::ANY,b  in proptest::num::f32::ANY, c in proptest::num::f32::ANY) {
-              let min = a.min(b).min(c);
-              let mid = a.min(b).max( a.max(b).min(c));
-              let max = a.max(b).max(c);
-              scale_tocolor(Palettes::Default,mid,min,max);
-          }
-      }
+        #[test]
+        fn scale_tocolor_within_bounds(
+            a in proptest::num::f32::ANY,
+            b in proptest::num::f32::ANY,
+            c in proptest::num::f32::ANY)
+          {
+            let min = a.min(b).min(c);
+            let mid = a.min(b).max( a.max(b).min(c));
+            let max = a.max(b).max(c);
+            scale_tocolor(Palettes::Default,mid,min,max);
+        }
+    }
 }
