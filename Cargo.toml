@@ -21,6 +21,8 @@ harness = false
 
 [dev-dependencies]
 criterion = '0.3'
+proptest = "0.10.0"
+pretty_assertions = "0.6.1"
 
 [dependencies]
 csv = '1.1.3'
