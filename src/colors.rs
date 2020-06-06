@@ -70,3 +70,43 @@ pub fn scale_tocolor(palette: Palettes, value: f32, min: f32, max: f32) -> [u8; 
         palette.get_color(scaled)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::*;
+    use pretty_assertions::{assert_eq, assert_ne};
+    use proptest::prelude::*;
+    #[test]
+    fn normalize_goes_up() {
+        assert_eq!(
+            (0..255)
+                .map(|v| v as f32)
+                .map(|v| scale_tocolor(Palettes::Default, v, 0.0, 255.0)
+                    .first()
+                    .cloned()
+                    .unwrap())
+                .collect::<Vec<_>>(),
+            (0..255).map(|v| v as u8).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn normalize_max() {
+        assert_eq!(
+            scale_tocolor(Palettes::Default, 23.02, -29.4, 23.02),
+            [255, 255, 50]
+        );
+    }
+    proptest! {
+        #[test]
+        fn scale_tocolor_within_bounds(a in proptest::num::f32::ANY,b  in proptest::num::f32::ANY, c in proptest::num::f32::ANY) {
+            let min = a.min(b).min(c);
+            let mid = a.max(b).min(c);
+            let max = a.max(b).max(c);
+            assert!(min<=mid)            ;
+            assert!(mid<=max);
+            assert!(min<=max);
+            scale_tocolor(Palettes::Default,mid,min,max);
+        }
+    }
+}
