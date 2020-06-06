@@ -299,27 +299,6 @@ fn save_image(
 mod tests {
     use crate::*;
     use pretty_assertions::{assert_eq, assert_ne};
-    #[test]
-    fn normalize_goes_up() {
-        assert_eq!(
-            (0..255)
-                .map(|v| v as f32)
-                .map(|v| scale_tocolor(Palettes::Default, v, 0.0, 255.0)
-                    .first()
-                    .cloned()
-                    .unwrap())
-                .collect::<Vec<_>>(),
-            (0..255).map(|v| v as u8).collect::<Vec<_>>()
-        );
-    }
-
-    #[test]
-    fn normalize_max() {
-        assert_eq!(
-            scale_tocolor(Palettes::Default, 23.02, -29.4, 23.02),
-            [255, 255, 50]
-        );
-    }
 
     #[test]
     fn preprocess_result() {
