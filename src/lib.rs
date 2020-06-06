@@ -333,6 +333,8 @@ fn save_image(
 mod tests {
     use crate::*;
     use pretty_assertions::{assert_eq, assert_ne};
+    use proptest::prelude::*;
+
     #[test]
     fn normalize_goes_up() {
         assert_eq!(
@@ -388,5 +390,12 @@ mod tests {
     #[test]
     fn complete() {
         main(Path::new("samples/sample1.csv.gz"))
+    }
+
+    proptest! {
+        #[test]
+        fn scale_tocolor_within_bounds(v in proptest::num::f32::ANY,min in proptest::num::f32::ANY,max in proptest::num::f32::ANY) {
+            scale_tocolor(v,min.min(max),max.max(min));
+        }
     }
 }
