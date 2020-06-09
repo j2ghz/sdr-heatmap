@@ -23,11 +23,11 @@ impl PaletteColorize for Palettes {
                 let whole = value as u8;
                 let fract = value.fract();
                 if fract < 0.33 {
-                    [whole, whole - 1, 50]
-                } else if fract < 0.66 {
-                    [whole - 1, whole, 50]
-                } else {
                     [whole, whole, 50]
+                } else if fract < 0.66 {
+                    [whole, whole + 1, 50]
+                } else {
+                    [whole + 1, whole + 1, 50]
                 }
             }
         }
@@ -108,6 +108,7 @@ mod tests {
             let mid = a.min(b).max( a.max(b).min(c));
             let max = a.max(b).max(c);
             scale_tocolor(Palettes::Default,mid,min,max);
+            scale_tocolor(Palettes::Extended,mid,min,max);
         }
     }
 }
