@@ -91,10 +91,29 @@ mod tests {
     }
 
     #[test]
-    fn normalize_max() {
+    fn scale_default() {
         assert_eq!(
             scale_tocolor(Palettes::Default, 23.02, -29.4, 23.02),
             [255, 255, 50]
+        );
+    }
+    #[test]
+    fn scale_over_under() {
+        assert_eq!(
+            scale_tocolor(Palettes::Default, f32::INFINITY, 0.0, 1.0),
+            [255, 255, 255]
+        );
+        assert_eq!(
+            scale_tocolor(Palettes::Default, f32::NEG_INFINITY, 0.0, 1.0),
+            [0, 0, 0]
+        );
+        assert_eq!(
+            scale_tocolor(Palettes::Extended, f32::INFINITY, 0.0, 1.0),
+            [255, 255, 255]
+        );
+        assert_eq!(
+            scale_tocolor(Palettes::Extended, f32::NEG_INFINITY, 0.0, 1.0),
+            [0, 0, 0]
         );
     }
     proptest! {
