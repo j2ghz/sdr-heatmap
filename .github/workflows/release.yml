@@ -28,10 +28,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - { os: ubuntu-latest , target: x86_64-unknown-linux-gnu     , cross: false }
-          - { os: ubuntu-latest , target: armv7-unknown-linux-gnueabihf, cross: true  }
-          - { os: ubuntu-latest , target: aarch64-unknown-linux-gnu    , cross: true  }
-          - { os: windows-latest, target: x86_64-pc-windows-msvc       , cross: false }
+          - { os: ubuntu-latest , target: x86_64-unknown-linux-gnu     , cross: false, ext: ""     }
+          - { os: ubuntu-latest , target: armv7-unknown-linux-gnueabihf, cross: true , ext: ""     }
+          - { os: ubuntu-latest , target: aarch64-unknown-linux-gnu    , cross: true , ext: ""     }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc       , cross: false, ext: ".exe" }
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
@@ -53,6 +53,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-          asset_path: ./target/${{ matrix.target }}/release/sdr-heatmap
-          asset_name: sdr-heatmap_${{ matrix.target }}
+          asset_path: ./target/${{ matrix.target }}/release/sdr-heatmap${{ matrix.ext }}
+          asset_name: sdr-heatmap_${{ matrix.target }}${{ matrix.ext }}
           asset_content_type: application/octet-stream
