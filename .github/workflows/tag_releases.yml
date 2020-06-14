@@ -1,8 +1,8 @@
 name: Tag a release on version increment
 on:
   push:
-    paths: 
-      - '**/Cargo.toml'
+    paths:
+      - "**/Cargo.toml"
     branches:
       - master
 jobs:
