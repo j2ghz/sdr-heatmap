@@ -1,0 +1,51 @@
+on:
+  push:
+    tags:
+    - 'v*'
+
+name: Release
+
+jobs:
+  create:
+    name: Create release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: true
+          prerelease: false
+  build:
+    name: Build & Upload Release Asset
+    strategy:
+      matrix:
+        target: [x86_64-unknown-linux-gnu, x86_64-pc-windows-msvc, armv7-unknown-linux-gnueabihf, aarch64-unknown-linux-gnu]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ target }}
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: --target ${{ target }} --release
+      - name: Upload Release Asset
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+          asset_path: ./target/${{ target }}/release/sdr-heatmap
+          asset_name: sdr-heatmap_${{ target }}
+          asset_content_type: application/octet-stream
