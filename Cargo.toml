@@ -1,6 +1,6 @@
 [package]
 name = 'sdr-heatmap'
-version = '0.1.4'
+version = '0.1.5'
 authors = ['J2ghz <j2.00ghz@gmail.com>']
 edition = '2018'
 description = 'Generates images from rtl_power csv files'
