@@ -127,7 +127,7 @@ pub fn main(path: &Path) {
     let (datawidth, dataheight, img) = process(reader, summary.min, summary.max);
     //Draw
     let (height, imgdata) = create_image(datawidth, dataheight, img);
-    let dest = path.with_extension(".png");
+    let dest = path.with_extension("png");
     save_image(datawidth, height, imgdata, dest.to_str().unwrap()).unwrap();
 }
 
