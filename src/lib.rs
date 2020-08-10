@@ -119,7 +119,7 @@ pub fn main(path: &Path) {
     info!("Loading: {}", path.display());
     //Preprocess
     let file = open_file(path);
-    let summary = preprocess_par_iter(file);
+    let summary = preprocess_iter(file);
     info!("Color values {} to {}", summary.min, summary.max);
     //Process
     let file = open_file(path);
