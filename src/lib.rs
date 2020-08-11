@@ -299,6 +299,7 @@ fn save_image(
 mod tests {
     use crate::*;
     use pretty_assertions::{assert_eq, assert_ne};
+    use webp::PixelLayout;
 
     #[test]
     fn preprocess_result() {
@@ -310,6 +311,11 @@ mod tests {
                 max: 21.35
             }
         );
+    }
+
+    #[test]
+    fn webp_new_image() {
+        let _img = webp::Encoder::new(&[0,0,0], PixelLayout::Rgb, 1, 1).encode_lossless();
     }
 
     #[test]
