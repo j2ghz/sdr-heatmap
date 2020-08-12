@@ -7,9 +7,9 @@ use std::f32;
 use std::io::prelude::*;
 use std::path::Path;
 use std::{cmp::Ordering, fs::File};
-pub mod colors;
-use colors::scale_tocolor;
-use colors::Palettes;
+mod palettes;
+use palettes::scale_tocolor;
+use palettes::default::DefaultPalette;
 
 #[derive(Debug)]
 struct Measurement {
@@ -241,7 +241,7 @@ fn process(
             time = m.time;
         }
         for (_, v) in vals {
-            let pixel = scale_tocolor(Palettes::Default, v, min, max);
+            let pixel = scale_tocolor(Box::from(DefaultPalette {}), v, min, max);
             img.extend(pixel.iter());
             batch += 1;
         }
@@ -315,7 +315,7 @@ mod tests {
 
     #[test]
     fn webp_new_image() {
-        let _img = webp::Encoder::new(&[0,0,0], PixelLayout::Rgb, 1, 1).encode_lossless();
+        let _img = webp::Encoder::new(&[0, 0, 0], PixelLayout::Rgb, 1, 1).encode_lossless();
     }
 
     #[test]
