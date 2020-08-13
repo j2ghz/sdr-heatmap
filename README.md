@@ -8,21 +8,6 @@ Inspired by [heatmap.py](https://github.com/keenerd/rtl-sdr-misc/blob/master/hea
 It aims to provide better speed than heatmap.py, while keeping the same image format.
 Another similar tool is [rtl-gopow](https://github.com/dhogborg/rtl-gopow), but it produces a different (IMO inferior) image than heatmap.py.
 
-# Roadmap
-- [ ] Produce image like `heatmap.py`
-  - [x] Signal values
-  - [ ] Frequency header
-  - [ ] Palettes
-- [ ] Performance
-  - [ ] Multithreading (currently singlethreaded)
-  - [ ] Memory usage
-- [ ] Formats
-  - [x] PNG
-  - [ ] WebP
-  - [ ] Lossy?
-  - [ ] Own, efficient, binary format
-- [ ] Viewer
-
 ## Installation
 <a href="https://repology.org/project/sdr-heatmap/versions"><img src="https://repology.org/badge/vertical-allrepos/sdr-heatmap.svg" alt="Packaging status" align="right"></a>
 
@@ -39,3 +24,18 @@ Another similar tool is [rtl-gopow](https://github.com/dhogborg/rtl-gopow), but 
 |        829 MB |      611 MB |           427 MB |          5164 MB | _Peak memory, using `time -v`, single run, v0.1.3_ |
 
 See raw results in [bench.md](bench.md)
+
+## Roadmap
+- [ ] Produce image like `heatmap.py`
+  - [x] Signal values
+  - [ ] Frequency header
+  - [ ] Palettes
+- [ ] Performance
+  - [ ] Multithreading (currently singlethreaded)
+  - [ ] Memory usage
+- [ ] Formats
+  - [x] PNG
+  - [ ] WebP
+  - [ ] Lossy?
+  - [ ] Own, efficient, binary format
+- [ ] Viewer
