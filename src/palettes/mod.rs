@@ -37,7 +37,7 @@ pub fn scale_tocolor(palette: Box<dyn PaletteColorize>, value: f32, min: f32, ma
 mod tests {
     use crate::*;
     use palettes::{default::DefaultPalette, extended::ExtendedPalette};
-    use pretty_assertions::{assert_eq, assert_ne};
+    use pretty_assertions::assert_eq;
     use proptest::prelude::*;
     #[test]
     fn normalize_goes_up() {
