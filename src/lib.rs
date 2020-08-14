@@ -8,8 +8,8 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::{cmp::Ordering, fs::File};
 mod palettes;
-use palettes::scale_tocolor;
 use palettes::default::DefaultPalette;
+use palettes::scale_tocolor;
 
 #[derive(Debug)]
 struct Measurement {
@@ -315,8 +315,9 @@ mod tests {
 
     #[test]
     fn webp_new_image() {
-        let size = (*webp::Encoder::new(&[0, 0, 0], PixelLayout::Rgb, 1, 1).encode_lossless()).len();
-        assert_ne!(0,size);
+        let size =
+            (*webp::Encoder::new(&[0, 0, 0], PixelLayout::Rgb, 1, 1).encode_lossless()).len();
+        assert_ne!(0, size);
     }
 
     #[test]
