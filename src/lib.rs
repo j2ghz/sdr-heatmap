@@ -2,7 +2,6 @@ use csv::StringRecord;
 use flate2::read::GzDecoder;
 use image::png::PNGEncoder;
 use log::*;
-use rayon::prelude::*;
 use std::f32;
 use std::io::prelude::*;
 use std::path::Path;
@@ -36,7 +35,7 @@ impl Measurement {
             .collect()
     }
     fn new(record: StringRecord) -> Measurement {
-        let mut values: Vec<_> = record.iter().skip(6).map(|s| s.parse().unwrap()).collect();
+        let mut values: Vec<_> = record.iter().skip(6).map(|s| parse_f32(s).unwrap()).collect();
         values.truncate(record.len() - 7);
         Measurement {
             date: record.get(0).unwrap().to_string(),
@@ -96,8 +95,16 @@ fn parse<T: std::str::FromStr>(
     string: &str,
 ) -> std::result::Result<T, <T as std::str::FromStr>::Err> {
     let parsed = string.parse::<T>();
-    debug_assert!(parsed.is_ok(), "Could not parse {}", string);
+    debug_assert!(parsed.is_ok(), "Could not parse '{}'", string);
     parsed
+}
+
+fn parse_f32(s: &str) -> std::result::Result<f32, <f32 as std::str::FromStr>::Err> {
+    if s == "-nan" || s == "nan" {
+        Ok(f32::NAN)
+    } else {
+        parse(s)
+    }
 }
 
 pub fn open_file(path: &Path) -> Box<dyn std::io::Read> {
@@ -149,8 +156,9 @@ pub fn preprocess(file: Box<dyn Read>) -> Summary {
                 if s == "-nan" {
                     f32::NAN
                 } else {
-                    s.parse::<f32>()
-                        .unwrap_or_else(|e| panic!("{} should be a valid float: {:?}", s, e))
+                    s.trim()
+                        .parse::<f32>()
+                        .unwrap_or_else(|e| panic!("'{}' should be a valid float: {:?}", s, e))
                 }
             })
             .collect();
@@ -171,15 +179,21 @@ pub fn preprocess(file: Box<dyn Read>) -> Summary {
 pub fn preprocess_iter(file: Box<dyn Read>) -> Summary {
     read_file(file)
         .into_records()
-        .map(|x| x.unwrap())
+        .map(|x| {
+            let mut x = x.unwrap();
+            x.trim();
+            x
+        })
         .flat_map(|line| {
             line.into_iter()
                 .skip(6)
                 .map(|s| {
                     if s == "-nan" {
                         f32::NAN
+                    } else if s == "nan" {
+                        f32::NAN
                     } else {
-                        s.trim().parse::<f32>().unwrap_or_else(|e| {
+                        s.parse::<f32>().unwrap_or_else(|e| {
                             panic!("'{}' should be a valid float: '{:?}'", s, e)
                         })
                     }
@@ -187,32 +201,6 @@ pub fn preprocess_iter(file: Box<dyn Read>) -> Summary {
                 .collect::<Vec<f32>>()
         })
         .fold(Summary::empty(), Summary::combine_f32)
-}
-
-pub fn preprocess_par_iter(file: Box<dyn Read>) -> Summary {
-    read_file(file)
-        .into_records()
-        .collect::<Vec<_>>()
-        .into_iter()
-        .par_bridge()
-        .map(|x| x.unwrap())
-        .flat_map(|line| {
-            line.into_iter()
-                .skip(6)
-                .map(|s| s.to_owned())
-                .collect::<Vec<String>>()
-        })
-        .map(|s| {
-            if s == "-nan" {
-                f32::NAN
-            } else {
-                s.trim()
-                    .parse::<f32>()
-                    .unwrap_or_else(|e| panic!("'{}' should be a valid float: '{:?}'", s, e))
-            }
-        })
-        .fold(Summary::empty, Summary::combine_f32)
-        .reduce(Summary::empty, Summary::combine)
 }
 
 pub fn process<R: Read>(
@@ -373,17 +361,6 @@ mod tests {
         );
     }
 
-    #[test]
-    fn preprocess_par_iter_result() {
-        let res = preprocess_par_iter(open_file(Path::new("samples/sample1.csv.gz")));
-        assert_eq!(
-            res,
-            Summary {
-                min: -29.4,
-                max: 21.35
-            }
-        );
-    }
     #[test]
     fn process_implementations_equal() {
         let basic = process(
