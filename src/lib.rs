@@ -115,7 +115,8 @@ fn read_file<T: std::io::Read>(file: T) -> csv::Reader<T> {
         .from_reader(file)
 }
 
-pub fn main(path: &Path) {
+pub fn main<P: AsRef<Path>>(path: P) {
+    let path = path.as_ref();
     info!("Loading: {}", path.display());
     //Preprocess
     let file = open_file(path);
@@ -214,8 +215,47 @@ pub fn preprocess_par_iter(file: Box<dyn Read>) -> Summary {
         .reduce(Summary::empty, Summary::combine)
 }
 
-fn process(
-    reader: csv::Reader<Box<dyn std::io::Read>>,
+pub fn process<R: Read>(
+    reader: csv::Reader<R>,
+    min: f32,
+    max: f32,
+) -> (usize, usize, std::vec::Vec<u8>) {
+    let mut date: String = "".to_string();
+    let mut time: String = "".to_string();
+    let mut batch = 0;
+    let mut datawidth = 0;
+    let mut img = Vec::new();
+    for result in reader.into_records() {
+        let mut record = result.unwrap();
+        record.trim();
+        assert!(record.len() > 7);
+        let m = Measurement::new(record);
+        let vals = m.get_values();
+        if date == m.date && time == m.time {
+        } else {
+            if datawidth == 0 {
+                datawidth = batch;
+            }
+            debug_assert_eq! {datawidth,batch}
+            batch = 0;
+            date = m.date;
+            time = m.time;
+        }
+        for (_, v) in vals {
+            let pixel = scale_tocolor(Box::from(DefaultPalette {}), v, min, max);
+            img.extend(pixel.iter());
+            batch += 1;
+        }
+    }
+    if datawidth == 0 {
+        datawidth = batch;
+    }
+    info!("Img data {}x{}", datawidth, batch);
+    (datawidth, img.len() / 3 / datawidth, img)
+}
+
+pub fn process_iter<R: Read>(
+    reader: csv::Reader<R>,
     min: f32,
     max: f32,
 ) -> (usize, usize, std::vec::Vec<u8>) {
@@ -299,6 +339,7 @@ fn save_image(
 mod tests {
     use crate::*;
     use pretty_assertions::{assert_eq, assert_ne};
+    use test_generator::test_resources;
     use webp::PixelLayout;
 
     #[test]
@@ -343,9 +384,23 @@ mod tests {
             }
         );
     }
-
     #[test]
-    fn complete() {
-        main(Path::new("samples/sample1.csv.gz"))
+    fn process_implementations_equal() {
+        let basic = process(
+            read_file(open_file(Path::new("samples/sample1.csv.gz"))),
+            -1000.0,
+            1000.0,
+        );
+        let iter = process_iter(
+            read_file(open_file(Path::new("samples/sample1.csv.gz"))),
+            -1000.0,
+            1000.0,
+        );
+        assert_eq!(basic, iter)
+    }
+
+    #[test_resources("samples/*.csv.gz")]
+    fn complete(path: &str) {
+        main(path)
     }
 }
