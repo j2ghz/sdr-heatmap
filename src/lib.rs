@@ -35,7 +35,11 @@ impl Measurement {
             .collect()
     }
     fn new(record: StringRecord) -> Measurement {
-        let mut values: Vec<_> = record.iter().skip(6).map(|s| parse_f32(s).unwrap()).collect();
+        let mut values: Vec<_> = record
+            .iter()
+            .skip(6)
+            .map(|s| parse_f32(s).unwrap())
+            .collect();
         values.truncate(record.len() - 7);
         Measurement {
             date: record.get(0).unwrap().to_string(),
@@ -154,6 +158,8 @@ pub fn preprocess(file: Box<dyn Read>) -> Summary {
             .skip(6)
             .map(|s| {
                 if s == "-nan" {
+                    f32::NAN
+                } else if s == "nan" {
                     f32::NAN
                 } else {
                     s.trim()

@@ -1,7 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use sdr_heatmap::{
-    open_file, preprocess, preprocess_iter, preprocess_par_iter, process, process_iter,
-};
+use sdr_heatmap::{open_file, preprocess, preprocess_iter, process, process_iter};
 use std::{
     io::{Cursor, Read},
     path::{Path, PathBuf},
@@ -55,7 +53,6 @@ fn preprocess_bench(c: &mut Criterion) {
     .collect::<Vec<_>>();
     for file in files.iter() {
         let size = get_file_size(&file);
-        group.sample_size(10);
         group.throughput(Throughput::Bytes(size));
         group.bench_with_input(
             BenchmarkId::new("basic", file.display()),
@@ -83,19 +80,6 @@ fn preprocess_bench(c: &mut Criterion) {
                 )
             },
         );
-        group.bench_with_input(
-            BenchmarkId::new("par_iterator", file.display()),
-            &file,
-            |b, file| {
-                b.iter_with_large_setup(
-                    || read_file_to_memory(file),
-                    |data| {
-                        let summary = preprocess_par_iter(data);
-                        black_box(summary);
-                    },
-                )
-            },
-        );
     }
 
     group.finish();
@@ -117,7 +101,6 @@ fn process_bench(c: &mut Criterion) {
     .collect::<Vec<_>>();
     for file in files.iter() {
         let size = get_file_size(&file);
-        group.sample_size(10);
         group.throughput(Throughput::Bytes(size));
         group.bench_with_input(
             BenchmarkId::new("basic", file.display()),
@@ -150,5 +133,5 @@ fn process_bench(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(bench, process_bench, preprocess_bench);
+criterion_group!(bench, process_bench);//, preprocess_bench);
 criterion_main!(bench);
