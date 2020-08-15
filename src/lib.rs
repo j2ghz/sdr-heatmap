@@ -7,6 +7,7 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::{cmp::Ordering, ffi::OsStr, fs::File};
 mod palettes;
+use arrayvec::ArrayVec;
 use palettes::default::DefaultPalette;
 use palettes::scale_tocolor;
 
@@ -22,7 +23,7 @@ struct Measurement {
 }
 
 impl Measurement {
-    fn get_values(&self) -> Vec<(f64, f32)> {
+    fn get_values_with_freq(&self) -> Vec<(f64, f32)> {
         self.values
             .iter()
             .zip(0..)
@@ -220,7 +221,7 @@ pub fn process<R: Read>(
         record.trim();
         assert!(record.len() > 7);
         let m = Measurement::new(record);
-        let vals = m.get_values();
+        let vals = m.get_values_with_freq();
         if date == m.date && time == m.time {
         } else {
             if datawidth == 0 {
@@ -249,38 +250,23 @@ pub fn process_iter<R: Read>(
     min: f32,
     max: f32,
 ) -> (usize, usize, std::vec::Vec<u8>) {
-    let mut date: String = "".to_string();
-    let mut time: String = "".to_string();
-    let mut batch = 0;
-    let mut datawidth = 0;
-    let mut img = Vec::new();
-    for result in reader.into_records() {
-        let mut record = result.unwrap();
-        record.trim();
-        assert!(record.len() > 7);
-        let m = Measurement::new(record);
-        let vals = m.get_values();
-        if date == m.date && time == m.time {
-        } else {
-            if datawidth == 0 {
-                datawidth = batch;
-            }
-            debug_assert_eq! {datawidth,batch}
-            batch = 0;
-            date = m.date;
-            time = m.time;
-        }
-        for (_, v) in vals {
-            let pixel = scale_tocolor(Box::from(DefaultPalette {}), v, min, max);
-            img.extend(pixel.iter());
-            batch += 1;
-        }
-    }
-    if datawidth == 0 {
-        datawidth = batch;
-    }
-    info!("Img data {}x{}", datawidth, batch);
-    (datawidth, img.len() / 3 / datawidth, img)
+    let img: Vec<u8> = reader
+        .into_records()
+        .map(|res| {
+            let mut record = res.expect("Invalid CSV record");
+            debug_assert!(record.len() > 7);
+            record.trim();
+            record
+        })
+        .map(Measurement::new)
+        .flat_map(|m| m.values.into_iter())
+        .flat_map(|val| {
+            let slice = scale_tocolor(Box::from(DefaultPalette {}), val, min, max);
+            ArrayVec::from(slice).into_iter()
+        })
+        .collect();
+
+    (1, img.len() / 3 / 1, img)
 }
 
 fn tape_measure(width: usize, imgdata: &mut Vec<u8>) {
