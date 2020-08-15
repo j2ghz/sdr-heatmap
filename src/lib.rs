@@ -157,9 +157,7 @@ pub fn preprocess(file: Box<dyn Read>) -> Summary {
             .iter()
             .skip(6)
             .map(|s| {
-                if s == "-nan" {
-                    f32::NAN
-                } else if s == "nan" {
+                if s == "-nan" || s == "nan" {
                     f32::NAN
                 } else {
                     s.trim()
@@ -194,9 +192,7 @@ pub fn preprocess_iter(file: Box<dyn Read>) -> Summary {
             line.into_iter()
                 .skip(6)
                 .map(|s| {
-                    if s == "-nan" {
-                        f32::NAN
-                    } else if s == "nan" {
+                    if s == "-nan" || s == "nan" {
                         f32::NAN
                     } else {
                         s.parse::<f32>().unwrap_or_else(|e| {
