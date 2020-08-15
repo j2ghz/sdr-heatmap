@@ -5,7 +5,7 @@ use log::*;
 use std::f32;
 use std::io::prelude::*;
 use std::path::Path;
-use std::{cmp::Ordering, fs::File};
+use std::{cmp::Ordering, fs::File, ffi::OsStr};
 mod palettes;
 use palettes::default::DefaultPalette;
 use palettes::scale_tocolor;
@@ -111,12 +111,12 @@ fn parse_f32(s: &str) -> std::result::Result<f32, <f32 as std::str::FromStr>::Er
     }
 }
 
-pub fn open_file(path: &Path) -> Box<dyn std::io::Read> {
+pub fn open_file<P: AsRef<Path>>(path: P) -> Box<dyn std::io::Read> {
+    let path = path.as_ref();
     let file = File::open(path).unwrap();
-    if path.extension().unwrap() == "gz" {
-        Box::new(GzDecoder::new(file))
-    } else {
-        Box::new(file)
+    match path.extension() {
+        Some(ext) if ext == OsStr::new("gz") => Box::new(GzDecoder::new(file)),
+        _ => Box::new(file)
     }
 }
 
@@ -337,8 +337,8 @@ mod tests {
     use webp::PixelLayout;
 
     #[test]
-    fn preprocess_result() {
-        let res = preprocess(open_file(Path::new("samples/sample1.csv.gz")));
+    fn preprocess_basic_result() {
+        let res = preprocess(open_file(Path::new("samples/46M.csv.gz")));
         assert_eq!(
             res,
             Summary {
@@ -357,7 +357,7 @@ mod tests {
 
     #[test]
     fn preprocess_iter_result() {
-        let res = preprocess_iter(open_file(Path::new("samples/sample1.csv.gz")));
+        let res = preprocess_iter(open_file(Path::new("samples/46M.csv.gz")));
         assert_eq!(
             res,
             Summary {
@@ -367,15 +367,15 @@ mod tests {
         );
     }
 
-    #[test]
-    fn process_implementations_equal() {
+    #[test_resources("samples/*.csv.gz")]
+    fn process_implementations_equal(path: &str) {
         let basic = process(
-            read_file(open_file(Path::new("samples/sample1.csv.gz"))),
+            read_file(open_file(path)),
             -1000.0,
             1000.0,
         );
         let iter = process_iter(
-            read_file(open_file(Path::new("samples/sample1.csv.gz"))),
+            read_file(open_file(path)),
             -1000.0,
             1000.0,
         );
