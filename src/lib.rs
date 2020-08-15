@@ -313,8 +313,7 @@ fn save_image(
 
 #[cfg(test)]
 mod tests {
-    use crate::*;
-    use pretty_assertions::{assert_eq, assert_ne};
+    use super::*;
     use test_generator::test_resources;
     use webp::PixelLayout;
 
@@ -353,7 +352,10 @@ mod tests {
     fn process_implementations_equal(path: &str) {
         let basic = process(read_file(open_file(path)), -1000.0, 1000.0);
         let iter = process_iter(read_file(open_file(path)), -1000.0, 1000.0);
-        assert_eq!(basic, iter)
+
+        assert!(basic.2 == iter.2, "Results differ");
+        assert_eq!(basic.0, iter.0, "Widths differ");
+        assert_eq!(basic.1, iter.1, "Heights differ");
     }
 
     #[test_resources("samples/*.csv.gz")]
