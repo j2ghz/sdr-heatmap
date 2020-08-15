@@ -5,7 +5,7 @@ use log::*;
 use std::f32;
 use std::io::prelude::*;
 use std::path::Path;
-use std::{cmp::Ordering, fs::File, ffi::OsStr};
+use std::{cmp::Ordering, ffi::OsStr, fs::File};
 mod palettes;
 use palettes::default::DefaultPalette;
 use palettes::scale_tocolor;
@@ -116,7 +116,7 @@ pub fn open_file<P: AsRef<Path>>(path: P) -> Box<dyn std::io::Read> {
     let file = File::open(path).unwrap();
     match path.extension() {
         Some(ext) if ext == OsStr::new("gz") => Box::new(GzDecoder::new(file)),
-        _ => Box::new(file)
+        _ => Box::new(file),
     }
 }
 
@@ -369,16 +369,8 @@ mod tests {
 
     #[test_resources("samples/*.csv.gz")]
     fn process_implementations_equal(path: &str) {
-        let basic = process(
-            read_file(open_file(path)),
-            -1000.0,
-            1000.0,
-        );
-        let iter = process_iter(
-            read_file(open_file(path)),
-            -1000.0,
-            1000.0,
-        );
+        let basic = process(read_file(open_file(path)), -1000.0, 1000.0);
+        let iter = process_iter(read_file(open_file(path)), -1000.0, 1000.0);
         assert_eq!(basic, iter)
     }
 
