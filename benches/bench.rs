@@ -88,13 +88,8 @@ fn preprocess_bench(c: &mut Criterion) {
 fn process_bench(c: &mut Criterion) {
     let mut group = c.benchmark_group("process implementations");
     let files = [
-        "samples/test0.csv.gz",
-        "samples/test1.csv.gz",
-        "samples/test2.csv.gz",
-        "samples/test3.csv.gz",
-        "samples/test4.csv.gz",
-        "samples/test5.csv.gz",
-        "samples/bench1.csv.gz",
+        "samples/1M.csv.gz",
+        "samples/46M.csv.gz",
     ]
     .iter()
     .map(PathBuf::from)
