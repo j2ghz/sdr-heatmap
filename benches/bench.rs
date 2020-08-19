@@ -125,5 +125,5 @@ fn process_bench(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(bench, process_bench); //, preprocess_bench);
+criterion_group!(bench, process_bench, preprocess_bench);
 criterion_main!(bench);
