@@ -58,6 +58,7 @@ impl Measurement {
 pub struct Summary {
     pub min: f32,
     pub max: f32,
+    pub width: Option<usize>,
 }
 
 impl Summary {
@@ -65,18 +66,15 @@ impl Summary {
         Self {
             min: f32::INFINITY,
             max: f32::NEG_INFINITY,
+            width: None,
         }
     }
 
-    fn combine_f32(s: Self, i: f32) -> Self {
-        Summary::combine(s, Summary { min: i, max: i })
-    }
-
-    fn combine(a: Self, b: Self) -> Self {
+    fn update(a: Self, val: f32, width: Option<usize>) -> Self {
         Self {
             min: {
                 let a = a.min;
-                let b = b.min;
+                let b = val;
                 if a.is_finite() {
                     a.min(b)
                 } else {
@@ -85,13 +83,14 @@ impl Summary {
             },
             max: {
                 let a = a.max;
-                let b = b.max;
+                let b = val;
                 if a.is_finite() {
                     a.max(b)
                 } else {
                     b
                 }
             },
+            width,
         }
     }
 }
@@ -148,12 +147,18 @@ pub fn preprocess(file: Box<dyn Read>) -> Summary {
     let reader = read_file(file);
     let mut min = f32::INFINITY;
     let mut max = f32::NEG_INFINITY;
+    let mut width: Option<usize> = None;
+    let mut first_date = None;
     for result in reader.into_records() {
         let record = {
             let mut x = result.unwrap();
             x.trim();
             x
         };
+        let timestamp = record
+            .get(0)
+            .and_then(|date| record.get(1).map(|time| format!("{} {}", date, time)));
+
         let values: Vec<f32> = record
             .iter()
             .skip(6)
@@ -167,6 +172,15 @@ pub fn preprocess(file: Box<dyn Read>) -> Summary {
                 }
             })
             .collect();
+
+        let values_count = values.len() - 1;
+        if first_date == None {
+            first_date = timestamp;
+            width = Some(values_count);
+        } else if first_date == timestamp {
+            width = width.map(|v| v + values_count);
+        }
+
         for value in values {
             if value != f32::INFINITY && value != f32::NEG_INFINITY {
                 if value > max {
@@ -178,7 +192,7 @@ pub fn preprocess(file: Box<dyn Read>) -> Summary {
             }
         }
     }
-    Summary { min, max }
+    Summary { min, max, width }
 }
 
 pub fn preprocess_iter(file: Box<dyn Read>) -> Summary {
@@ -203,7 +217,9 @@ pub fn preprocess_iter(file: Box<dyn Read>) -> Summary {
                 })
                 .collect::<Vec<f32>>()
         })
-        .fold(Summary::empty(), Summary::combine_f32)
+        .fold(Summary::empty(), |sum, val| {
+            Summary::update(sum, val, Some(1))
+        })
 }
 
 pub fn process<R: Read>(
@@ -324,7 +340,8 @@ mod tests {
             res,
             Summary {
                 min: -29.4,
-                max: 21.35
+                max: 21.35,
+                width: Some(11622),
             }
         );
     }
@@ -343,7 +360,8 @@ mod tests {
             res,
             Summary {
                 min: -29.4,
-                max: 21.35
+                max: 21.35,
+                width: Some(5),
             }
         );
     }
