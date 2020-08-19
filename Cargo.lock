@@ -890,6 +890,7 @@ dependencies = [
  "csv",
  "flate2",
  "image 0.23.8",
+ "itertools",
  "log",
  "proptest",
  "rayon",

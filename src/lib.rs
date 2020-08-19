@@ -8,6 +8,7 @@ use std::path::Path;
 use std::{cmp::Ordering, ffi::OsStr, fs::File};
 mod palettes;
 use arrayvec::ArrayVec;
+use itertools::Itertools;
 use palettes::default::DefaultPalette;
 use palettes::scale_tocolor;
 
@@ -58,7 +59,7 @@ impl Measurement {
 pub struct Summary {
     pub min: f32,
     pub max: f32,
-    pub width: Option<usize>,
+    pub width: usize,
 }
 
 impl Summary {
@@ -66,11 +67,11 @@ impl Summary {
         Self {
             min: f32::INFINITY,
             max: f32::NEG_INFINITY,
-            width: None,
+            width: 0,
         }
     }
 
-    fn update(a: Self, val: f32, width: Option<usize>) -> Self {
+    fn update(a: Self, val: f32, width: usize) -> Self {
         Self {
             min: {
                 let a = a.min;
@@ -192,7 +193,11 @@ pub fn preprocess(file: Box<dyn Read>) -> Summary {
             }
         }
     }
-    Summary { min, max, width }
+    Summary {
+        min,
+        max,
+        width: width.unwrap(),
+    }
 }
 
 pub fn preprocess_iter(file: Box<dyn Read>) -> Summary {
@@ -203,22 +208,33 @@ pub fn preprocess_iter(file: Box<dyn Read>) -> Summary {
             x.trim();
             x
         })
-        .flat_map(|line| {
-            line.into_iter()
-                .skip(6)
-                .map(|s| {
-                    if s == "-nan" || s == "nan" {
-                        f32::NAN
-                    } else {
-                        s.parse::<f32>().unwrap_or_else(|e| {
-                            panic!("'{}' should be a valid float: '{:?}'", s, e)
+        .group_by(|line| format!("{} {}", line.get(0).unwrap(), line.get(1).unwrap()))
+        .into_iter()
+        .map(|(_, group)| {
+            group
+                .flat_map(|line| {
+                    let mut vals = line
+                        .into_iter()
+                        .skip(6)
+                        .map(|s| {
+                            if s == "-nan" || s == "nan" {
+                                f32::NAN
+                            } else {
+                                s.parse::<f32>().unwrap_or_else(|e| {
+                                    panic!("'{}' should be a valid float: '{:?}'", s, e)
+                                })
+                            }
                         })
-                    }
+                        .collect::<Vec<f32>>();
+                    vals.pop().unwrap();
+                    vals
                 })
-                .collect::<Vec<f32>>()
+                .collect::<Vec<_>>()
         })
-        .fold(Summary::empty(), |sum, val| {
-            Summary::update(sum, val, Some(1))
+        .fold(Summary::empty(), |sum, vals| {
+            let width = vals.len();
+            vals.into_iter()
+                .fold(sum, |sum, val| Summary::update(sum, val, width))
         })
 }
 
@@ -265,6 +281,7 @@ pub fn process_iter<R: Read>(
     reader: csv::Reader<R>,
     min: f32,
     max: f32,
+    width: usize,
 ) -> (usize, usize, std::vec::Vec<u8>) {
     let img: Vec<u8> = reader
         .into_records()
@@ -282,7 +299,7 @@ pub fn process_iter<R: Read>(
         })
         .collect();
 
-    (1, img.len() / 3 / 1, img)
+    (width, img.len() / 3 / width, img)
 }
 
 fn tape_measure(width: usize, imgdata: &mut Vec<u8>) {
@@ -341,7 +358,7 @@ mod tests {
             Summary {
                 min: -29.4,
                 max: 21.35,
-                width: Some(11622),
+                width: 11622,
             }
         );
     }
@@ -361,15 +378,16 @@ mod tests {
             Summary {
                 min: -29.4,
                 max: 21.35,
-                width: Some(5),
+                width: 11622,
             }
         );
     }
 
     #[test_resources("samples/*.csv.gz")]
     fn process_implementations_equal(path: &str) {
-        let basic = process(read_file(open_file(path)), -1000.0, 1000.0);
-        let iter = process_iter(read_file(open_file(path)), -1000.0, 1000.0);
+        let sum = preprocess_iter(open_file(path));
+        let basic = process(read_file(open_file(path)), sum.min, sum.max);
+        let iter = process_iter(read_file(open_file(path)), sum.min, sum.max, sum.width);
 
         assert!(basic.2 == iter.2, "Results differ");
         assert_eq!(basic.0, iter.0, "Widths differ");

@@ -87,13 +87,10 @@ fn preprocess_bench(c: &mut Criterion) {
 
 fn process_bench(c: &mut Criterion) {
     let mut group = c.benchmark_group("process implementations");
-    let files = [
-        "samples/1M.csv.gz",
-        "samples/46M.csv.gz",
-    ]
-    .iter()
-    .map(PathBuf::from)
-    .collect::<Vec<_>>();
+    let files = ["samples/1M.csv.gz", "samples/46M.csv.gz"]
+        .iter()
+        .map(PathBuf::from)
+        .collect::<Vec<_>>();
     for file in files.iter() {
         let size = get_file_size(&file);
         group.throughput(Throughput::Bytes(size));
@@ -117,7 +114,7 @@ fn process_bench(c: &mut Criterion) {
                 b.iter_with_large_setup(
                     || read_csv_to_memory(file),
                     |data| {
-                        let summary = process_iter(data, -1000.0, 1000.0);
+                        let summary = process_iter(data, -1000.0, 1000.0, 1);
                         black_box(summary);
                     },
                 )
