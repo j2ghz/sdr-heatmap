@@ -1,6 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use sdr_heatmap::{open_file, preprocess, preprocess_iter, process, process_iter};
 use std::{
+    fs::read_dir,
     io::{Cursor, Read},
     path::{Path, PathBuf},
 };
@@ -8,7 +9,7 @@ use std::{
 fn read_file_to_memory(filename: &Path) -> std::boxed::Box<std::io::Cursor<std::vec::Vec<u8>>> {
     let mut buf = Vec::new();
     let mut file = open_file(filename);
-    let _ = file.read_to_end(&mut buf);
+    let _ = file.read_to_end(&mut buf).unwrap();
 
     Box::new(Cursor::new(buf))
 }
@@ -37,21 +38,21 @@ fn get_file_size(filename: &Path) -> u64 {
     length
 }
 
+fn get_test_files() -> std::vec::Vec<std::path::PathBuf> {
+    let dir = read_dir("./samples/").expect("Couldn't read samples directory");
+    dir.map(|f|f.unwrap()).filter(|f| {
+        f
+            .file_name()
+            .to_string_lossy()
+            .ends_with(".csv.gz")
+    })
+    .map(|f| f.path())
+    .collect::<Vec<_>>()
+}
+
 fn preprocess_bench(c: &mut Criterion) {
     let mut group = c.benchmark_group("preprocess implementations");
-    let files = [
-        "samples/test0.csv.gz",
-        "samples/test1.csv.gz",
-        "samples/test2.csv.gz",
-        "samples/test3.csv.gz",
-        "samples/test4.csv.gz",
-        "samples/test5.csv.gz",
-        "samples/bench1.csv.gz",
-    ]
-    .iter()
-    .map(PathBuf::from)
-    .collect::<Vec<_>>();
-    for file in files.iter() {
+    for file in get_test_files().iter() {
         let size = get_file_size(&file);
         group.throughput(Throughput::Bytes(size));
         group.bench_with_input(
@@ -87,11 +88,7 @@ fn preprocess_bench(c: &mut Criterion) {
 
 fn process_bench(c: &mut Criterion) {
     let mut group = c.benchmark_group("process implementations");
-    let files = ["samples/1M.csv.gz", "samples/46M.csv.gz"]
-        .iter()
-        .map(PathBuf::from)
-        .collect::<Vec<_>>();
-    for file in files.iter() {
+    for file in get_test_files().iter() {
         let size = get_file_size(&file);
         group.throughput(Throughput::Bytes(size));
         group.bench_with_input(
