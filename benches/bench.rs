@@ -3,7 +3,7 @@ use sdr_heatmap::{open_file, preprocess, preprocess_iter, process, process_iter}
 use std::{
     fs::read_dir,
     io::{Cursor, Read},
-    path::{Path, PathBuf},
+    path::Path,
 };
 
 fn read_file_to_memory(filename: &Path) -> std::boxed::Box<std::io::Cursor<std::vec::Vec<u8>>> {
@@ -40,14 +40,10 @@ fn get_file_size(filename: &Path) -> u64 {
 
 fn get_test_files() -> std::vec::Vec<std::path::PathBuf> {
     let dir = read_dir("./samples/").expect("Couldn't read samples directory");
-    dir.map(|f|f.unwrap()).filter(|f| {
-        f
-            .file_name()
-            .to_string_lossy()
-            .ends_with(".csv.gz")
-    })
-    .map(|f| f.path())
-    .collect::<Vec<_>>()
+    dir.map(|f| f.unwrap())
+        .filter(|f| f.file_name().to_string_lossy().ends_with(".csv.gz"))
+        .map(|f| f.path())
+        .collect::<Vec<_>>()
 }
 
 fn preprocess_bench(c: &mut Criterion) {
