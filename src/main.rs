@@ -1,4 +1,5 @@
 use clap::{App, Arg};
+use sdr_heatmap::Palette;
 use std::path::Path;
 use walkdir::WalkDir;
 
@@ -34,6 +35,13 @@ fn main() {
                 .multiple(true)
                 .help("Finds .csv files in the specified folder and runs on all fo them"),
         )
+        .arg(
+            Arg::with_name("palette")
+            .short("p")
+            .default_value("default")
+            .possible_values(&["default","extended"])
+            .help("Choose a function that converts signal value to a color.\nDefault: RGB: [0-255,0-255,50]\nExtended: like default, with more steps\n")
+        )
         .get_matches();
 
     let verbose = matches.occurrences_of("verbose") as usize;
@@ -48,16 +56,21 @@ fn main() {
 
     let input = Path::new(matches.value_of("INPUT").unwrap());
     let exts = vec![".csv", ".csv.gz"];
+    let palette = match matches.value_of("palette").unwrap() {
+        "default" => Palette::Default,
+        "extended" => Palette::Extended,
+        _ => panic!("Clap should have caught other values earlier"),
+    };
 
     if matches.is_present("recursive") {
         for entry in WalkDir::new(input) {
             let entry = entry.unwrap();
             let name = entry.file_name().to_str().unwrap();
             if exts.iter().any(|ext| name.ends_with(ext)) {
-                sdr_heatmap::main(entry.path());
+                sdr_heatmap::main(entry.path(), palette);
             }
         }
     } else {
-        sdr_heatmap::main(input);
+        sdr_heatmap::main(input, palette);
     }
 }

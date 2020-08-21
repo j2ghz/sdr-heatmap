@@ -9,8 +9,7 @@ use std::{cmp::Ordering, ffi::OsStr, fs::File};
 mod palettes;
 use arrayvec::ArrayVec;
 use itertools::Itertools;
-use palettes::default::DefaultPalette;
-use palettes::scale_tocolor;
+pub use palettes::{scale_tocolor, Palette};
 
 #[derive(Debug)]
 struct Measurement {
@@ -127,7 +126,7 @@ fn read_file<T: std::io::Read>(file: T) -> csv::Reader<T> {
         .from_reader(file)
 }
 
-pub fn main<P: AsRef<Path>>(path: P) {
+pub fn main<P: AsRef<Path>>(path: P, palette: Palette) {
     let path = path.as_ref();
     info!("Loading: {}", path.display());
     //Preprocess
@@ -137,7 +136,7 @@ pub fn main<P: AsRef<Path>>(path: P) {
     //Process
     let file = open_file(path);
     let reader = read_file(file);
-    let (datawidth, dataheight, img) = process(reader, summary.min, summary.max);
+    let (datawidth, dataheight, img) = process(reader, summary.min, summary.max, palette);
     //Draw
     let (height, imgdata) = create_image(datawidth, dataheight, img);
     let dest = path.with_extension("png");
@@ -242,6 +241,7 @@ pub fn process<R: Read>(
     reader: csv::Reader<R>,
     min: f32,
     max: f32,
+    palette: Palette,
 ) -> (usize, usize, std::vec::Vec<u8>) {
     let mut date: String = "".to_string();
     let mut time: String = "".to_string();
@@ -265,7 +265,7 @@ pub fn process<R: Read>(
             time = m.time;
         }
         for (_, v) in vals {
-            let pixel = scale_tocolor(Box::from(DefaultPalette {}), v, min, max);
+            let pixel = scale_tocolor(palette, v, min, max);
             img.extend(pixel.iter());
             batch += 1;
         }
@@ -294,7 +294,7 @@ pub fn process_iter<R: Read>(
         .map(Measurement::new)
         .flat_map(|m| m.values.into_iter())
         .flat_map(|val| {
-            let slice = scale_tocolor(Box::from(DefaultPalette {}), val, min, max);
+            let slice = scale_tocolor(Palette::Default, val, min, max);
             ArrayVec::from(slice).into_iter()
         })
         .collect();
@@ -386,7 +386,12 @@ mod tests {
     #[test_resources("samples/*.csv.gz")]
     fn process_implementations_equal(path: &str) {
         let sum = preprocess_iter(open_file(path));
-        let basic = process(read_file(open_file(path)), sum.min, sum.max);
+        let basic = process(
+            read_file(open_file(path)),
+            sum.min,
+            sum.max,
+            Palette::Default,
+        );
         let iter = process_iter(read_file(open_file(path)), sum.min, sum.max, sum.width);
 
         assert!(basic.2 == iter.2, "Results differ");
@@ -396,6 +401,6 @@ mod tests {
 
     #[test_resources("samples/*.csv.gz")]
     fn complete(path: &str) {
-        main(path)
+        main(path, Palette::Default)
     }
 }

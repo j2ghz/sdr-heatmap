@@ -1,8 +1,23 @@
 use log::*;
-pub mod default;
-pub mod extended;
+mod default;
+mod extended;
 
-pub trait PaletteColorize {
+#[derive(Copy, Clone)]
+pub enum Palette {
+    Default,
+    Extended,
+}
+
+impl Palette {
+    fn instance(&self) -> Box<dyn PaletteColorize> {
+        match self {
+            Palette::Default => Box::from(default::DefaultPalette {}),
+            Palette::Extended => Box::from(extended::ExtendedPalette {}),
+        }
+    }
+}
+
+trait PaletteColorize {
     fn get_color(&self, value: f32) -> [u8; 3];
     fn get_color_under_range(&self) -> [u8; 3];
     fn get_color_over_range(&self) -> [u8; 3];
@@ -20,8 +35,9 @@ fn rescale_value_to(value: f32, min: f32, max: f32) -> f32 {
 }
 
 /// Places value on a scale from min to max, and transforms it to an integer scale from 0 to 255. Returns a color using the specified palette.
-pub fn scale_tocolor(palette: Box<dyn PaletteColorize>, value: f32, min: f32, max: f32) -> [u8; 3] {
+pub fn scale_tocolor(palette: Palette, value: f32, min: f32, max: f32) -> [u8; 3] {
     let scaled = rescale_value_from(value, min, max);
+    let palette = palette.instance();
     if scaled < 0.0 {
         warn!("Computed invalid color! Value range: {} to {}, Value: {}, Color range: 0-255, Color: {}", min,max,value,scaled);
         palette.get_color_under_range()
@@ -36,19 +52,16 @@ pub fn scale_tocolor(palette: Box<dyn PaletteColorize>, value: f32, min: f32, ma
 #[cfg(test)]
 mod tests {
     use crate::*;
-    use palettes::{default::DefaultPalette, extended::ExtendedPalette};
     use proptest::prelude::*;
     #[test]
     fn normalize_goes_up() {
         assert_eq!(
             (0..255)
                 .map(|v| v as f32)
-                .map(
-                    |v| scale_tocolor(Box::from(DefaultPalette {}), v, 0.0, 255.0)
-                        .first()
-                        .cloned()
-                        .unwrap()
-                )
+                .map(|v| scale_tocolor(Palette::Default, v, 0.0, 255.0)
+                    .first()
+                    .cloned()
+                    .unwrap())
                 .collect::<Vec<_>>(),
             (0..255).map(|v| v as u8).collect::<Vec<_>>()
         );
@@ -57,26 +70,26 @@ mod tests {
     #[test]
     fn scale_default() {
         assert_eq!(
-            scale_tocolor(Box::from(DefaultPalette {}), 23.02, -29.4, 23.02),
+            scale_tocolor(Palette::Default, 23.02, -29.4, 23.02),
             [255, 255, 50]
         );
     }
     #[test]
     fn scale_over_under() {
         assert_eq!(
-            scale_tocolor(Box::from(DefaultPalette {}), f32::INFINITY, 0.0, 1.0),
+            scale_tocolor(Palette::Default, f32::INFINITY, 0.0, 1.0),
             [255, 255, 255]
         );
         assert_eq!(
-            scale_tocolor(Box::from(DefaultPalette {}), f32::NEG_INFINITY, 0.0, 1.0),
+            scale_tocolor(Palette::Default, f32::NEG_INFINITY, 0.0, 1.0),
             [0, 0, 0]
         );
         assert_eq!(
-            scale_tocolor(Box::from(ExtendedPalette {}), f32::INFINITY, 0.0, 1.0),
+            scale_tocolor(Palette::Extended, f32::INFINITY, 0.0, 1.0),
             [255, 255, 255]
         );
         assert_eq!(
-            scale_tocolor(Box::from(ExtendedPalette {}), f32::NEG_INFINITY, 0.0, 1.0),
+            scale_tocolor(Palette::Extended, f32::NEG_INFINITY, 0.0, 1.0),
             [0, 0, 0]
         );
     }
@@ -90,8 +103,8 @@ mod tests {
             let min = a.min(b).min(c);
             let mid = a.min(b).max( a.max(b).min(c));
             let max = a.max(b).max(c);
-            scale_tocolor(Box::from(DefaultPalette{}),mid,min,max);
-            scale_tocolor(Box::from(ExtendedPalette{}),mid,min,max);
+            scale_tocolor(Palette::Default,mid,min,max);
+            scale_tocolor(Palette::Extended,mid,min,max);
         }
     }
 }
