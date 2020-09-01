@@ -1,6 +1,5 @@
 use csv::StringRecord;
 use flate2::read::GzDecoder;
-use image::png::PNGEncoder;
 use log::*;
 use std::f32;
 use std::io::prelude::*;
@@ -9,6 +8,7 @@ use std::{cmp::Ordering, ffi::OsStr, fs::File};
 mod palettes;
 use arrayvec::ArrayVec;
 use itertools::Itertools;
+use image::png::PngEncoder;
 pub use palettes::{scale_tocolor, Palette};
 
 #[derive(Debug)]
@@ -336,7 +336,7 @@ fn save_image(
 ) -> std::result::Result<(), image::error::ImageError> {
     info!("Saving {} {}x{}", dest, width, height);
     let f = std::fs::File::create(dest).unwrap();
-    PNGEncoder::new(f).encode(
+    PngEncoder::new(f).encode(
         &imgdata,
         width as u32,
         height as u32,

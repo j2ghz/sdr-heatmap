@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use sdr_heatmap::{open_file, preprocess, preprocess_iter, process, process_iter};
+use sdr_heatmap::{open_file, preprocess, preprocess_iter, process, process_iter, Palette};
 use std::{
     fs::read_dir,
     io::{Cursor, Read},
@@ -94,7 +94,7 @@ fn process_bench(c: &mut Criterion) {
                 b.iter_with_large_setup(
                     || read_csv_to_memory(file),
                     |data| {
-                        let summary = process(data, -1000.0, 1000.0);
+                        let summary = process(data, -1000.0, 1000.0, Palette::Default);
                         black_box(summary);
                     },
                 )
