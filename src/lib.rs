@@ -6,9 +6,10 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::{cmp::Ordering, ffi::OsStr, fs::File};
 mod palettes;
+use anyhow::{Context, Result};
 use arrayvec::ArrayVec;
-use itertools::Itertools;
 use image::png::PngEncoder;
+use itertools::Itertools;
 pub use palettes::{scale_tocolor, Palette};
 
 #[derive(Debug)]
@@ -35,22 +36,40 @@ impl Measurement {
             })
             .collect()
     }
-    fn new(record: StringRecord) -> Measurement {
+    fn new(record: StringRecord) -> Result<Measurement> {
         let mut values: Vec<_> = record
             .iter()
             .skip(6)
-            .map(|s| parse_f32(s).unwrap())
-            .collect();
+            .map(|s| parse_f32(s))
+            .collect::<Result<Vec<_>>>()?;
         values.truncate(record.len() - 7);
-        Measurement {
-            date: record.get(0).unwrap().to_string(),
-            time: record.get(1).unwrap().to_string(),
-            freq_low: parse(record.get(2).unwrap()).unwrap(),
-            freq_high: parse(record.get(3).unwrap()).unwrap(),
-            freq_step: parse(record.get(4).unwrap()).unwrap(),
-            samples: parse(record.get(5).unwrap()).unwrap(),
+        Ok(Measurement {
+            date: record
+                .get(0)
+                .context("Couldn't get date column")?
+                .to_string(),
+            time: record
+                .get(1)
+                .context("Couldn't get time column")?
+                .to_string(),
+            freq_low: record
+                .get(2)
+                .context("Couldn't get freq_low column")?
+                .parse()?,
+            freq_high: record
+                .get(3)
+                .context("Couldn't get freq_high column")?
+                .parse()?,
+            freq_step: record
+                .get(4)
+                .context("Couldn't get freq_step column")?
+                .parse()?,
+            samples: record
+                .get(5)
+                .context("Couldn't get samples column")?
+                .parse()?,
             values,
-        }
+        })
     }
 }
 
@@ -95,19 +114,11 @@ impl Summary {
     }
 }
 
-fn parse<T: std::str::FromStr>(
-    string: &str,
-) -> std::result::Result<T, <T as std::str::FromStr>::Err> {
-    let parsed = string.parse::<T>();
-    debug_assert!(parsed.is_ok(), "Could not parse '{}'", string);
-    parsed
-}
-
-fn parse_f32(s: &str) -> std::result::Result<f32, <f32 as std::str::FromStr>::Err> {
+fn parse_f32(s: &str) -> Result<f32> {
     if s == "-nan" || s == "nan" {
         Ok(f32::NAN)
     } else {
-        parse(s)
+        Ok(s.parse::<f32>()?)
     }
 }
 
@@ -126,7 +137,7 @@ fn read_file<T: std::io::Read>(file: T) -> csv::Reader<T> {
         .from_reader(file)
 }
 
-pub fn main<P: AsRef<Path>>(path: P, palette: Palette) {
+pub fn main<P: AsRef<Path>>(path: P, palette: Palette) -> Result<()> {
     let path = path.as_ref();
     info!("Loading: {}", path.display());
     //Preprocess
@@ -136,11 +147,12 @@ pub fn main<P: AsRef<Path>>(path: P, palette: Palette) {
     //Process
     let file = open_file(path);
     let reader = read_file(file);
-    let (datawidth, dataheight, img) = process(reader, summary.min, summary.max, palette);
+    let (datawidth, dataheight, img) = process(reader, summary.min, summary.max, palette)?;
     //Draw
     let (height, imgdata) = create_image(datawidth, dataheight, img);
     let dest = path.with_extension("png");
     save_image(datawidth, height, imgdata, dest.to_str().unwrap()).unwrap();
+    Ok(())
 }
 
 pub fn preprocess(file: Box<dyn Read>) -> Summary {
@@ -242,7 +254,7 @@ pub fn process<R: Read>(
     min: f32,
     max: f32,
     palette: Palette,
-) -> (usize, usize, std::vec::Vec<u8>) {
+) -> Result<(usize, usize, std::vec::Vec<u8>)> {
     let mut date: String = "".to_string();
     let mut time: String = "".to_string();
     let mut batch = 0;
@@ -252,7 +264,7 @@ pub fn process<R: Read>(
         let mut record = result.unwrap();
         record.trim();
         assert!(record.len() > 7);
-        let m = Measurement::new(record);
+        let m = Measurement::new(record)?;
         let vals = m.get_values_with_freq();
         if date == m.date && time == m.time {
         } else {
@@ -274,7 +286,7 @@ pub fn process<R: Read>(
         datawidth = batch;
     }
     info!("Img data {}x{}", datawidth, batch);
-    (datawidth, img.len() / 3 / datawidth, img)
+    Ok((datawidth, img.len() / 3 / datawidth, img))
 }
 
 pub fn process_iter<R: Read>(
@@ -292,7 +304,7 @@ pub fn process_iter<R: Read>(
             record
         })
         .map(Measurement::new)
-        .flat_map(|m| m.values.into_iter())
+        .flat_map(|m| m.unwrap().values.into_iter())
         .flat_map(|val| {
             let slice = scale_tocolor(Palette::Default, val, min, max);
             ArrayVec::from(slice).into_iter()
@@ -384,14 +396,14 @@ mod tests {
     }
 
     #[test_resources("samples/*.csv.gz")]
-    fn process_implementations_equal(path: &str) {
+    fn process_implementations_equal(path: &str)  {
         let sum = preprocess_iter(open_file(path));
         let basic = process(
             read_file(open_file(path)),
             sum.min,
             sum.max,
             Palette::Default,
-        );
+        ).unwrap();
         let iter = process_iter(read_file(open_file(path)), sum.min, sum.max, sum.width);
 
         assert!(basic.2 == iter.2, "Results differ");
@@ -401,6 +413,6 @@ mod tests {
 
     #[test_resources("samples/*.csv.gz")]
     fn complete(path: &str) {
-        main(path, Palette::Default)
+        main(path, Palette::Default).unwrap()
     }
 }

@@ -1,3 +1,4 @@
+use anyhow::Result;
 use clap::{App, Arg};
 use sdr_heatmap::Palette;
 use std::path::Path;
@@ -7,7 +8,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 const NAME: &str = env!("CARGO_PKG_NAME");
 const AUTHOR: &str = env!("CARGO_PKG_AUTHORS");
 
-fn main() {
+fn main() -> Result<()> {
     let matches = App::new(NAME)
         .version(VERSION)
         .author(AUTHOR)
@@ -67,10 +68,11 @@ fn main() {
             let entry = entry.unwrap();
             let name = entry.file_name().to_str().unwrap();
             if exts.iter().any(|ext| name.ends_with(ext)) {
-                sdr_heatmap::main(entry.path(), palette);
+                sdr_heatmap::main(entry.path(), palette)?;
             }
         }
     } else {
-        sdr_heatmap::main(input, palette);
-    }
+        sdr_heatmap::main(input, palette)?;
+    };
+    Ok(())
 }

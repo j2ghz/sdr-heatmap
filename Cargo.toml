@@ -36,3 +36,4 @@ rayon = '1.4.0'
 webp = "0.1.0"
 arrayvec = "0.5"
 itertools = "0.9"
+anyhow = "1.0"

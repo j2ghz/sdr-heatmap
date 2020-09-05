@@ -94,7 +94,7 @@ fn process_bench(c: &mut Criterion) {
                 b.iter_with_large_setup(
                     || read_csv_to_memory(file),
                     |data| {
-                        let summary = process(data, -1000.0, 1000.0, Palette::Default);
+                        let summary = process(data, -1000.0, 1000.0, Palette::Default).unwrap();
                         black_box(summary);
                     },
                 )
