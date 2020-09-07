@@ -1,3 +1,4 @@
+#![warn(clippy::unwrap_used)]
 use anyhow::Result;
 use clap::{App, Arg};
 use sdr_heatmap::Palette;
@@ -52,8 +53,7 @@ fn main() -> Result<()> {
         .quiet(quiet)
         .verbosity(verbose)
         //.timestamp(ts)
-        .init()
-        .unwrap();
+        .init()?;
 
     let input = Path::new(matches.value_of("INPUT").unwrap());
     let exts = vec![".csv", ".csv.gz"];
@@ -65,8 +65,8 @@ fn main() -> Result<()> {
 
     if matches.is_present("recursive") {
         for entry in WalkDir::new(input) {
-            let entry = entry.unwrap();
-            let name = entry.file_name().to_str().unwrap();
+            let entry = entry?;
+            let name = entry.file_name().to_string_lossy();
             if exts.iter().any(|ext| name.ends_with(ext)) {
                 sdr_heatmap::main(entry.path(), palette)?;
             }
