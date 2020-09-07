@@ -8,7 +8,7 @@ use std::{
 
 fn read_file_to_memory(filename: &Path) -> std::boxed::Box<std::io::Cursor<std::vec::Vec<u8>>> {
     let mut buf = Vec::new();
-    let mut file = open_file(filename);
+    let mut file = open_file(filename).expect("Can't open file");
     let _ = file.read_to_end(&mut buf).unwrap();
 
     Box::new(Cursor::new(buf))
