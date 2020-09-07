@@ -1,3 +1,4 @@
+#![warn(clippy::unwrap_used)]
 use csv::StringRecord;
 use flate2::read::GzDecoder;
 use log::*;
@@ -122,12 +123,12 @@ fn parse_f32(s: &str) -> Result<f32> {
     }
 }
 
-pub fn open_file<P: AsRef<Path>>(path: P) -> Box<dyn std::io::Read> {
+pub fn open_file<P: AsRef<Path>>(path: P) -> std::io::Result<Box<dyn std::io::Read>> {
     let path = path.as_ref();
-    let file = File::open(path).unwrap();
+    let file = File::open(path)?;
     match path.extension() {
-        Some(ext) if ext == OsStr::new("gz") => Box::new(GzDecoder::new(file)),
-        _ => Box::new(file),
+        Some(ext) if ext == OsStr::new("gz") => Ok(Box::new(GzDecoder::new(file))),
+        _ => Ok(Box::new(file)),
     }
 }
 
@@ -141,17 +142,17 @@ pub fn main<P: AsRef<Path>>(path: P, palette: Palette) -> Result<()> {
     let path = path.as_ref();
     info!("Loading: {}", path.display());
     //Preprocess
-    let file = open_file(path);
+    let file = open_file(path)?;
     let summary = preprocess_iter(file);
     info!("Color values {} to {}", summary.min, summary.max);
     //Process
-    let file = open_file(path);
+    let file = open_file(path)?;
     let reader = read_file(file);
     let (datawidth, dataheight, img) = process(reader, summary.min, summary.max, palette)?;
     //Draw
     let (height, imgdata) = create_image(datawidth, dataheight, img);
     let dest = path.with_extension("png");
-    save_image(datawidth, height, imgdata, dest.to_str().unwrap()).unwrap();
+    save_image(datawidth, height, imgdata, dest)?;
     Ok(())
 }
 
@@ -261,7 +262,7 @@ pub fn process<R: Read>(
     let mut datawidth = 0;
     let mut img = Vec::new();
     for result in reader.into_records() {
-        let mut record = result.unwrap();
+        let mut record = result?;
         record.trim();
         assert!(record.len() > 7);
         let m = Measurement::new(record)?;
@@ -340,20 +341,21 @@ fn create_image(width: usize, height: usize, mut img: Vec<u8>) -> (usize, std::v
     (height, imgdata)
 }
 
-fn save_image(
+fn save_image<P: std::convert::AsRef<std::path::Path>>(
     width: usize,
     height: usize,
     imgdata: Vec<u8>,
-    dest: &str,
-) -> std::result::Result<(), image::error::ImageError> {
-    info!("Saving {} {}x{}", dest, width, height);
-    let f = std::fs::File::create(dest).unwrap();
+    dest: P,
+) -> Result<()> {
+    info!("Saving {} {}x{}", dest.as_ref().display(), width, height);
+    let f = std::fs::File::create(dest)?;
     PngEncoder::new(f).encode(
         &imgdata,
         width as u32,
         height as u32,
         image::ColorType::Rgb8,
-    )
+    )?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -364,7 +366,7 @@ mod tests {
 
     #[test]
     fn preprocess_basic_result() {
-        let res = preprocess(open_file(Path::new("samples/46M.csv.gz")));
+        let res = preprocess(open_file(Path::new("samples/46M.csv.gz")).unwrap());
         assert_eq!(
             res,
             Summary {
@@ -384,7 +386,7 @@ mod tests {
 
     #[test]
     fn preprocess_iter_result() {
-        let res = preprocess_iter(open_file(Path::new("samples/46M.csv.gz")));
+        let res = preprocess_iter(open_file(Path::new("samples/46M.csv.gz")).unwrap());
         assert_eq!(
             res,
             Summary {
@@ -396,15 +398,21 @@ mod tests {
     }
 
     #[test_resources("samples/*.csv.gz")]
-    fn process_implementations_equal(path: &str)  {
-        let sum = preprocess_iter(open_file(path));
+    fn process_implementations_equal(path: &str) {
+        let sum = preprocess_iter(open_file(path).unwrap());
         let basic = process(
-            read_file(open_file(path)),
+            read_file(open_file(path).unwrap()),
             sum.min,
             sum.max,
             Palette::Default,
-        ).unwrap();
-        let iter = process_iter(read_file(open_file(path)), sum.min, sum.max, sum.width);
+        )
+        .unwrap();
+        let iter = process_iter(
+            read_file(open_file(path).unwrap()),
+            sum.min,
+            sum.max,
+            sum.width,
+        );
 
         assert!(basic.2 == iter.2, "Results differ");
         assert_eq!(basic.0, iter.0, "Widths differ");
