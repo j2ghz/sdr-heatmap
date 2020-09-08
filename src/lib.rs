@@ -423,7 +423,12 @@ mod tests {
     }
 
     #[test_resources("samples/*.csv.gz")]
-    fn complete(path: &str) {
+    fn complete_gzip(path: &str) {
+        main(path, Palette::Default).unwrap()
+    }
+
+    #[test_resources("samples/*.csv")]
+    fn complete_plain(path: &str) {
         main(path, Palette::Default).unwrap()
     }
 }
