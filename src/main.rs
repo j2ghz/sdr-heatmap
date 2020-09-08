@@ -1,78 +1,94 @@
 #![warn(clippy::unwrap_used)]
 use anyhow::Result;
-use clap::{App, Arg};
+use anyhow::{anyhow, Context};
+use log::{debug, warn};
 use sdr_heatmap::Palette;
-use std::path::Path;
+use std::{path::PathBuf, str::FromStr};
 use walkdir::WalkDir;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const NAME: &str = env!("CARGO_PKG_NAME");
 const AUTHOR: &str = env!("CARGO_PKG_AUTHORS");
 
-fn main() -> Result<()> {
-    let matches = App::new(NAME)
-        .version(VERSION)
-        .author(AUTHOR)
-        .about("Render .csv from rtl_power into images. Based on heatmap.py")
-        .arg(
-            Arg::with_name("INPUT")
-                .help("Specify the .csv file to use")
-                .required(true)
-                .index(1),
-        )
-        .arg(
-            Arg::with_name("verbose")
-                .short("v")
-                .multiple(true)
-                .help("Sets the level of verbosity"),
-        )
-        .arg(
-            Arg::with_name("quiet")
-                .short("q")
-                .help("Silence all output"),
-        )
-        .arg(
-            Arg::with_name("recursive")
-                .short("r")
-                .multiple(true)
-                .help("Finds .csv files in the specified folder and runs on all fo them"),
-        )
-        .arg(
-            Arg::with_name("palette")
-            .short("p")
-            .default_value("default")
-            .possible_values(&["default","extended"])
-            .help("Choose a function that converts signal value to a color.\nDefault: RGB: [0-255,0-255,50]\nExtended: like default, with more steps\n")
-        )
-        .get_matches();
+use structopt::StructOpt;
 
-    let verbose = matches.occurrences_of("verbose") as usize;
-    let quiet = matches.is_present("quiet");
+#[derive(Debug, StructOpt)]
+enum OptPalette {
+    Default,
+    Extended,
+}
+
+impl FromStr for OptPalette {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "default" => Ok(OptPalette::Default),
+            "extended" => Ok(OptPalette::Extended),
+            _ => Err(anyhow!("{} is not a valid palette name", s)),
+        }
+    }
+}
+impl Into<Palette> for OptPalette {
+    fn into(self) -> Palette {
+        match self {
+            OptPalette::Default => Palette::Default,
+            OptPalette::Extended => Palette::Extended,
+        }
+    }
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(name = NAME, about = "Render .csv from rtl_power into images. Based on heatmap.py", version = VERSION, author = AUTHOR)]
+struct Opt {
+    /// Verbose mode (-v, -vv, -vvv, etc)
+    #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
+    verbose: usize,
+
+    /// Silence all output
+    #[structopt(short = "q", long = "quiet")]
+    quiet: bool,
+
+    /// Finds .csv files in the specified folder and runs on all of them
+    #[structopt(short = "r", long = "recursive")]
+    recursive: bool,
+
+    /// Input file
+    #[structopt(parse(from_os_str))]
+    input: PathBuf,
+
+    /// Choose a function that converts signal value to a color. (Default: RGB: [0-255,0-255,50], Extended: like default, with more steps)
+    #[structopt(short, long, default_value = "default")]
+    palette: OptPalette,
+}
+
+fn main() -> Result<()> {
+    let options: Opt = Opt::from_args();
+
     stderrlog::new()
         .module(module_path!())
-        .quiet(quiet)
-        .verbosity(verbose)
-        //.timestamp(ts)
+        .quiet(options.quiet)
+        .verbosity(options.verbose)
         .init()?;
 
-    let input = Path::new(matches.value_of("INPUT").unwrap());
-    let exts = vec![".csv", ".csv.gz"];
-    let palette = match matches.value_of("palette").unwrap() {
-        "default" => Palette::Default,
-        "extended" => Palette::Extended,
-        _ => panic!("Clap should have caught other values earlier"),
-    };
+    debug!("Options: {:?}", options);
 
-    if matches.is_present("recursive") {
+    let input = options.input;
+    let exts = vec![".csv", ".csv.gz"];
+    let palette = options.palette.into();
+
+    if options.recursive {
         for entry in WalkDir::new(input) {
             let entry = entry?;
             let name = entry.file_name().to_string_lossy();
             if exts.iter().any(|ext| name.ends_with(ext)) {
-                sdr_heatmap::main(entry.path(), palette)?;
+                sdr_heatmap::main(entry.path(), palette)
+                    .context(format!("Error on file '{}'", entry.path().display()))?;
             }
         }
     } else {
-        sdr_heatmap::main(input, palette)?;
+        sdr_heatmap::main(&input, palette)
+            .context(format!("Error on file '{}'", input.display()))?;
     };
     Ok(())
 }
