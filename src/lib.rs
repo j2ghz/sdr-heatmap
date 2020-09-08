@@ -38,12 +38,11 @@ impl Measurement {
             .collect()
     }
     fn new(record: StringRecord) -> Result<Measurement> {
-        let mut values: Vec<_> = record
+        let values: Vec<_> = record
             .iter()
             .skip(6)
             .map(|s| parse_f32(s))
             .collect::<Result<Vec<_>>>()?;
-        values.truncate(record.len() - 7);
         Ok(Measurement {
             date: record
                 .get(0)
@@ -430,5 +429,10 @@ mod tests {
     #[test_resources("samples/*.csv")]
     fn complete_plain(path: &str) {
         main(path, Palette::Default).unwrap()
+    }
+
+    #[test]
+    fn test() {
+        main("samples/1k.csv", Palette::Default).unwrap()
     }
 }
