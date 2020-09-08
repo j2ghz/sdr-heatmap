@@ -265,7 +265,7 @@ pub fn process<R: Read>(
     for result in reader.into_records() {
         let mut record = result?;
         record.trim();
-        assert!(record.len() > 7);
+        assert!(record.len() >= 7);
         let m = Measurement::new(record)?;
         let vals = m.get_values_with_freq();
         if date == m.date && time == m.time {
@@ -303,7 +303,7 @@ pub fn process_iter<R: Read>(
         .into_records()
         .map(|res| {
             let mut record = res.expect("Invalid CSV record");
-            debug_assert!(record.len() > 7);
+            debug_assert!(record.len() >= 7);
             record.trim();
             record
         })
