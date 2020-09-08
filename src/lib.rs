@@ -123,9 +123,9 @@ fn parse_f32(s: &str) -> Result<f32> {
     }
 }
 
-pub fn open_file<P: AsRef<Path>>(path: P) -> std::io::Result<Box<dyn std::io::Read>> {
+pub fn open_file<P: AsRef<Path>>(path: P) -> Result<Box<dyn std::io::Read>> {
     let path = path.as_ref();
-    let file = File::open(path)?;
+    let file = File::open(path).context(format!("Couldn't open file '{}'", path.display()))?;
     match path.extension() {
         Some(ext) if ext == OsStr::new("gz") => Ok(Box::new(GzDecoder::new(file))),
         _ => Ok(Box::new(file)),
@@ -146,9 +146,10 @@ pub fn main<P: AsRef<Path>>(path: P, palette: Palette) -> Result<()> {
     let summary = preprocess_iter(file);
     info!("Color values {} to {}", summary.min, summary.max);
     //Process
-    let file = open_file(path)?;
+    let file = open_file(path).context("Couldn't preprocess file")?;
     let reader = read_file(file);
-    let (datawidth, dataheight, img) = process(reader, summary.min, summary.max, palette)?;
+    let (datawidth, dataheight, img) =
+        process(reader, summary.min, summary.max, palette).context("Couldn't process file")?;
     //Draw
     let (height, imgdata) = create_image(datawidth, dataheight, img);
     let dest = path.with_extension("png");
@@ -286,8 +287,10 @@ pub fn process<R: Read>(
     if datawidth == 0 {
         datawidth = batch;
     }
-    info!("Img data {}x{}", datawidth, batch);
-    Ok((datawidth, img.len() / 3 / datawidth, img))
+    let w = datawidth;
+    let h = img.len() / 3 / datawidth;
+    info!("Img data {}x{}", w, h);
+    Ok((w, h, img))
 }
 
 pub fn process_iter<R: Read>(

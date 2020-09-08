@@ -24,7 +24,7 @@ fn read_csv_to_memory(
 }
 
 fn get_file_size(filename: &Path) -> u64 {
-    let mut file = open_file(filename);
+    let mut file = open_file(filename).expect("Couldn't open file");
     let mut length: u64 = 0;
     let mut buf = vec![0; 1024];
     loop {
