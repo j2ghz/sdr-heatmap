@@ -159,9 +159,9 @@ dependencies = [
 
 [[package]]
 name = "color_quant"
-version = "1.0.1"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0dbbb57365263e881e805dc77d94697c9118fd94d8da011240555aa7b23445bd"
+checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
 
 [[package]]
 name = "const_fn"
@@ -407,12 +407,13 @@ dependencies = [
 
 [[package]]
 name = "image"
-version = "0.23.10"
+version = "0.23.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "985fc06b1304d19c28d5c562ed78ef5316183f2b0053b46763a0b94862373c34"
+checksum = "b4f0a8345b33b082aedec2f4d7d4a926b845cee184cbe78b703413066564431b"
 dependencies = [
  "bytemuck",
  "byteorder",
+ "color_quant",
  "gif 0.11.1",
  "jpeg-decoder",
  "num-iter",
@@ -420,7 +421,7 @@ dependencies = [
  "num-traits",
  "png 0.16.7",
  "scoped_threadpool",
- "tiff 0.5.0",
+ "tiff 0.6.0",
 ]
 
 [[package]]
@@ -938,7 +939,7 @@ dependencies = [
  "criterion",
  "csv",
  "flate2",
- "image 0.23.10",
+ "image 0.23.11",
  "itertools",
  "log",
  "proptest",
@@ -1147,13 +1148,13 @@ dependencies = [
 
 [[package]]
 name = "tiff"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f3b8a87c4da944c3f27e5943289171ac71a6150a79ff6bacfff06d159dfff2f"
+checksum = "abeb4e3f32a8973722c0254189e6890358e72b1bf11becb287ee0b23c595a41d"
 dependencies = [
- "byteorder",
- "lzw",
- "miniz_oxide 0.3.7",
+ "jpeg-decoder",
+ "miniz_oxide 0.4.1",
+ "weezl",
 ]
 
 [[package]]
