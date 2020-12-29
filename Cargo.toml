@@ -16,8 +16,8 @@ repository = 'https://github.com/j2ghz/sdr-heatmap/'
 version = '0.1.5'
 
 [profile.release]
-lto = "fat"
 codegen-units = 1
+lto = "fat"
 
 [[bench]]
 harness = false
@@ -35,7 +35,7 @@ clap = '2.33.3'
 csv = '1.1.4'
 flate2 = '1.0.19'
 image = '0.23.12'
-itertools = "0.9"
+itertools = "0.10.0"
 log = '0.4.11'
 rayon = '1.5.0'
 stderrlog = '0.5.0'

@@ -300,24 +300,30 @@ pub fn process_iter<R: Read>(
     min: f32,
     max: f32,
     width: usize,
-) -> (usize, usize, std::vec::Vec<u8>) {
+) -> Result<(usize, usize, std::vec::Vec<u8>)> {
     let img: Vec<u8> = reader
         .into_records()
-        .map(|res| {
-            let mut record = res.expect("Invalid CSV record");
+        .map(|res| -> anyhow::Result<Measurement> {
+            let mut record = res.context("Invalid CSV record")?;
             debug_assert!(record.len() >= 7);
             record.trim();
-            record
+            Ok(Measurement::new(record)?)
         })
-        .map(Measurement::new)
-        .flat_map(|m| m.unwrap().values.into_iter())
-        .flat_map(|val| {
-            let slice = scale_tocolor(Palette::Default, val, min, max);
-            ArrayVec::from(slice).into_iter()
+        .map(|m| match m {
+            Ok(m) => Ok(m.values.into_iter().flat_map(|val| {
+                ArrayVec::from(scale_tocolor(Palette::Default, val, min, max)).into_iter()
+            })),
+            Err(e) => Err(e),
+        })
+        .flat_map(|r| match r {
+            Ok(inner) => inner,
+            Err(e) => {
+                panic!("{:?}", e)
+            }
         })
         .collect();
 
-    (width, img.len() / 3 / width, img)
+    Ok((width, img.len() / 3 / width, img))
 }
 
 fn tape_measure(width: usize, imgdata: &mut Vec<u8>) {
@@ -417,7 +423,8 @@ mod tests {
             sum.min,
             sum.max,
             sum.width,
-        );
+        )
+        .unwrap();
 
         assert!(basic.2 == iter.2, "Results differ");
         assert_eq!(basic.0, iter.0, "Widths differ");
