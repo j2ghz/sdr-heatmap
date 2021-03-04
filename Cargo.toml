@@ -15,12 +15,12 @@ readme = 'README.md'
 repository = 'https://github.com/j2ghz/sdr-heatmap/'
 version = '0.1.5'
 
-[[bench]]
-harness = false
-name = 'bench'
+# [[bench]]
+# harness = false
+# name = 'bench'
 
 [dev-dependencies]
-criterion = '0.3'
+#criterion = '0.3'
 proptest = "1.0"
 test-generator = "0.3"
 
