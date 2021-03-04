@@ -19,24 +19,22 @@ jobs:
         with:
           toolchain: nightly
           override: true
-
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all-features --no-fail-fast
+          components: llvm-tools-preview
+          
+      - name: Install grcov
+        run: if [[ ! -e ~/.cargo/bin/grcov ]]; then cargo install grcov; fi
+        
+      - name: Installing dependencies
+        run: sudo apt-get install libasound2-dev
+        
+      - name: Run tests
+        run: cargo test
         env:
-          CARGO_INCREMENTAL: "0"
-          RUSTFLAGS: "-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests"
-
-      - uses: actions-rs/grcov@v0.1.6
-        id: coverage
-
-      - name: Coveralls upload
-        uses: coverallsapp/github-action@v1.1.2
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-lcov: ${{ steps.coverage.outputs.report }}
-
+          RUSTFLAGS: '-Zinstrument-coverage'
+          
+      - name: Run grcov
+        run: grcov . --binary-path target/debug/deps/ -s . -t lcov --branch --ignore-not-existing --ignore '../**' --ignore '/*' -o coverage.lcov
+      
       - uses: codecov/codecov-action@v1
         with:
-          file: ${{ steps.coverage.outputs.report }}
+          file: coverage.lcov
