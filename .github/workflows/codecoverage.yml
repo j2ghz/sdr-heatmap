@@ -21,18 +21,21 @@ jobs:
           toolchain: nightly
           override: true
           components: llvm-tools-preview
-          
+
       - name: Install grcov
         run: if [[ ! -e ~/.cargo/bin/grcov ]]; then cargo install grcov; fi
-        
+
       - name: Run tests
         run: cargo test
         env:
-          RUSTFLAGS: '-Zinstrument-coverage'
-          
+          RUSTFLAGS: "-Zinstrument-coverage"
+
+      - name: Check files
+        run: ls -lah
+
       - name: Run grcov
-        run: grcov . --binary-path target/debug/ -s . -t lcov --branch --ignore-not-existing -o coverage.lcov
-      
+        run: grcov . --binary-path target/debug/deps/ -s . -t lcov --branch --ignore-not-existing -o coverage.lcov
+
       - uses: codecov/codecov-action@v1
         with:
           file: coverage.lcov
