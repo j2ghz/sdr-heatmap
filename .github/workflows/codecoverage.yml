@@ -34,7 +34,10 @@ jobs:
         run: ls -lah
 
       - name: Run grcov
-        run: grcov . --binary-path target/debug/deps/ -s . -t lcov --branch --ignore-not-existing -o coverage.lcov
+        run: grcov . --binary-path target/debug/deps/ -s . -t lcov --branch --ignore-not-existing --ignore '../**' --ignore '/*' -o coverage.lcov
+
+      - name: Read coverage.lcov
+        run: cat coverage.lcov
 
       - uses: codecov/codecov-action@v1
         with:
