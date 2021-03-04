@@ -4,6 +4,7 @@ on:
       - "**/Cargo.toml"
       - "**/Cargo.lock"
       - "**/*.rs"
+      - ".github/workflows/codecoverage.yml"
 
 name: Code Coverage
 
