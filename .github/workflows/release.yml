@@ -36,16 +36,19 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+        
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           target: ${{ matrix.target }}
           override: true
+
       - uses: actions-rs/cargo@v1
         with:
           use-cross: ${{ matrix.cross }}
           command: build
           args: --target ${{ matrix.target }} --release
+
       - name: Upload Release Asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1

@@ -53,6 +53,12 @@ pub fn scale_tocolor(palette: Palette, value: f32, min: f32, max: f32) -> [u8; 3
 mod tests {
     use crate::*;
     use proptest::prelude::*;
+
+    #[test]
+    fn dummy() {
+        assert_eq!(4, 2 + 2);
+    }
+
     #[test]
     fn normalize_goes_up() {
         assert_eq!(
