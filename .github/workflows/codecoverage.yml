@@ -31,13 +31,19 @@ jobs:
           RUSTFLAGS: "-Zinstrument-coverage"
 
       - name: Check files
-        run: ls -lah
+        run: ls -lah default.profraw
 
       - name: Run grcov
         run: grcov . --binary-path target/debug/deps/ -s . -t lcov --branch --ignore-not-existing --ignore '../**' --ignore '/*' -o coverage.lcov
 
       - name: Read coverage.lcov
         run: cat coverage.lcov
+
+      - name: Coveralls upload
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-lcov: coverage.lcov
 
       - uses: codecov/codecov-action@v1
         with:
