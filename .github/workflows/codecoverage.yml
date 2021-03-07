@@ -5,6 +5,8 @@ on:
       - "**/Cargo.lock"
       - "**/*.rs"
       - ".github/workflows/codecoverage.yml"
+  pull_request:
+    branches: [master]
 
 name: Code Coverage
 
@@ -22,8 +24,11 @@ jobs:
           override: true
           components: llvm-tools-preview
 
-      - name: Install grcov
-        run: cargo install grcov
+      - uses: actions-rs/install@v0.1
+        with:
+          crate: grcov
+          version: latest
+          use-tool-cache: true
 
       - name: Run tests
         run: cargo test

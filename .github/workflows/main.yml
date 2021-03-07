@@ -18,20 +18,18 @@ jobs:
       - uses: actions/checkout@v2
         with:
           lfs: true
+
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{matrix.toolchain}}
+
       - name: Build
         uses: actions-rs/cargo@v1.0.1
         with:
           command: build
           toolchain: ${{matrix.toolchain}}
           args: --release
-      - name: Upload a Build Artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: binary
-          path: target\release\sdr-heatmap
+
       - name: Test
         uses: actions-rs/cargo@v1.0.1
         with:
