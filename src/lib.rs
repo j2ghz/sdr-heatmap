@@ -307,7 +307,7 @@ pub fn process_iter<R: Read>(
             let mut record = res.context("Invalid CSV record")?;
             debug_assert!(record.len() >= 7);
             record.trim();
-            Ok(Measurement::new(record)?)
+            Measurement::new(record)
         })
         .map(|m| match m {
             Ok(m) => Ok(m.values.into_iter().flat_map(|val| {

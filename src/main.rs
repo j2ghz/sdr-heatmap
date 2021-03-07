@@ -29,9 +29,9 @@ impl FromStr for OptPalette {
         }
     }
 }
-impl Into<Palette> for OptPalette {
-    fn into(self) -> Palette {
-        match self {
+impl From<OptPalette> for Palette {
+    fn from(opt: OptPalette) -> Self {
+        match opt {
             OptPalette::Default => Palette::Default,
             OptPalette::Extended => Palette::Extended,
         }
