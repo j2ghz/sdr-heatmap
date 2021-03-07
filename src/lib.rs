@@ -366,7 +366,7 @@ fn save_image<P: std::convert::AsRef<std::path::Path>>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use test_generator::test_resources;
+    // use test_generator::test_resources;
     use webp::PixelLayout;
 
     #[test]
