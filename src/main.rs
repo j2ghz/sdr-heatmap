@@ -92,3 +92,11 @@ fn main() -> Result<()> {
     };
     Ok(())
 }
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn dummy() {
+        assert_eq!(4, 2 + 2);
+    }
+}

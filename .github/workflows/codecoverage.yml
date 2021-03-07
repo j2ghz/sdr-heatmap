@@ -4,6 +4,9 @@ on:
       - "**/Cargo.toml"
       - "**/Cargo.lock"
       - "**/*.rs"
+      - ".github/workflows/codecoverage.yml"
+  pull_request:
+    branches: [master]
 
 name: Code Coverage
 
