@@ -52,7 +52,7 @@ pub fn scale_tocolor(palette: Palette, value: f32, min: f32, max: f32) -> [u8; 3
 #[cfg(test)]
 mod tests {
     use crate::*;
-    use proptest::prelude::*;
+//     use proptest::prelude::*;
     #[test]
     fn normalize_goes_up() {
         assert_eq!(
@@ -93,18 +93,18 @@ mod tests {
             [0, 0, 0]
         );
     }
-    proptest! {
-        #[test]
-        fn scale_tocolor_within_bounds(
-            a in proptest::num::f32::ANY,
-            b in proptest::num::f32::ANY,
-            c in proptest::num::f32::ANY)
-          {
-            let min = a.min(b).min(c);
-            let mid = a.min(b).max( a.max(b).min(c));
-            let max = a.max(b).max(c);
-            scale_tocolor(Palette::Default,mid,min,max);
-            scale_tocolor(Palette::Extended,mid,min,max);
-        }
-    }
+//     proptest! {
+//         #[test]
+//         fn scale_tocolor_within_bounds(
+//             a in proptest::num::f32::ANY,
+//             b in proptest::num::f32::ANY,
+//             c in proptest::num::f32::ANY)
+//           {
+//             let min = a.min(b).min(c);
+//             let mid = a.min(b).max( a.max(b).min(c));
+//             let max = a.max(b).max(c);
+//             scale_tocolor(Palette::Default,mid,min,max);
+//             scale_tocolor(Palette::Extended,mid,min,max);
+//         }
+//     }
 }
