@@ -4,6 +4,9 @@ on:
       - "**/Cargo.toml"
       - "**/Cargo.lock"
       - "**/*.rs"
+      - ".github/workflows/codecoverage.yml"
+  pull_request:
+    branches: [master]
 
 name: Code Coverage
 
@@ -28,11 +31,11 @@ jobs:
           CARGO_INCREMENTAL: "0"
           RUSTFLAGS: "-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests"
 
-      - uses: actions-rs/grcov@v0.1.5
+      - uses: actions-rs/grcov@v0.1.6
         id: coverage
 
       - name: Coveralls upload
-        uses: coverallsapp/github-action@v1.1.1
+        uses: coverallsapp/github-action@v1.1.2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path-to-lcov: ${{ steps.coverage.outputs.report }}

@@ -21,3 +21,11 @@ impl PaletteColorize for ExtendedPalette {
         [255, 255, 255]
     }
 }
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn dummy() {
+        assert_eq!(4, 2 + 2);
+    }
+}
