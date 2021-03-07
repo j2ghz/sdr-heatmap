@@ -366,7 +366,7 @@ fn save_image<P: std::convert::AsRef<std::path::Path>>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    // use test_generator::test_resources;
+    use test_generator::test_resources;
     use webp::PixelLayout;
 
     #[test]
@@ -402,35 +402,40 @@ mod tests {
         );
     }
 
-    // #[test_resources("samples/*.csv.gz")]
-    // fn process_implementations_equal(path: &str) {
-    //     let sum = preprocess_iter(open_file(path).unwrap());
-    //     let basic = process(
-    //         read_file(open_file(path).unwrap()),
-    //         sum.min,
-    //         sum.max,
-    //         Palette::Default,
-    //     )
-    //     .unwrap();
-    //     let iter = process_iter(
-    //         read_file(open_file(path).unwrap()),
-    //         sum.min,
-    //         sum.max,
-    //         sum.width,
-    //     );
+    #[test_resources("samples/*.csv.gz")]
+    fn process_implementations_equal(path: &str) {
+        let sum = preprocess_iter(open_file(path).unwrap());
+        let basic = process(
+            read_file(open_file(path).unwrap()),
+            sum.min,
+            sum.max,
+            Palette::Default,
+        )
+        .unwrap();
+        let iter = process_iter(
+            read_file(open_file(path).unwrap()),
+            sum.min,
+            sum.max,
+            sum.width,
+        );
 
-    //     assert!(basic.2 == iter.2, "Results differ");
-    //     assert_eq!(basic.0, iter.0, "Widths differ");
-    //     assert_eq!(basic.1, iter.1, "Heights differ");
-    // }
+        assert!(basic.2 == iter.2, "Results differ");
+        assert_eq!(basic.0, iter.0, "Widths differ");
+        assert_eq!(basic.1, iter.1, "Heights differ");
+    }
 
-    // #[test_resources("samples/*.csv.gz")]
-    // fn complete_gzip(path: &str) {
-    //     main(path, Palette::Default).unwrap()
-    // }
+    #[test_resources("samples/*.csv.gz")]
+    fn complete_gzip(path: &str) {
+        main(path, Palette::Default).unwrap()
+    }
 
-    // #[test_resources("samples/*.csv")]
-    // fn complete_plain(path: &str) {
-    //     main(path, Palette::Default).unwrap()
-    // }
+    #[test_resources("samples/*.csv")]
+    fn complete_plain(path: &str) {
+        main(path, Palette::Default).unwrap()
+    }
+
+    #[test]
+    fn dummy() {
+        assert_eq!(4, 2 + 2);
+    }
 }

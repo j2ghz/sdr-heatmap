@@ -96,7 +96,7 @@ fn main() -> Result<()> {
 mod tests {
 
     #[test]
-    fn internal() {
+    fn dummy() {
         assert_eq!(4, 2 + 2);
     }
 }
