@@ -1203,9 +1203,9 @@ dependencies = [
 
 [[package]]
 name = "webp"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d5036becfc554b3177bc655503a1ce26a34c9257edcb1ae2e18900341f943d4"
+checksum = "6a598dd8197b16c7569e231619b668380aefe9352daf1d503c3eea7b38fddba3"
 dependencies = [
  "image",
  "libwebp-sys",
