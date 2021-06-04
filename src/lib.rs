@@ -440,9 +440,4 @@ mod tests {
     fn complete_plain(path: &str) {
         main(path, Palette::Default).unwrap()
     }
-
-    #[test]
-    fn dummy() {
-        assert_eq!(4, 2 + 2);
-    }
 }
