@@ -30,7 +30,7 @@ test-generator = "0.3"
 
 [dependencies]
 anyhow = "1.0"
-arrayvec = "0.5"
+arrayvec = "0.7"
 clap = '2.33.3'
 csv = '1.1.5'
 flate2 = '1.0.19'
