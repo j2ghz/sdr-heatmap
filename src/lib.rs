@@ -159,10 +159,7 @@ pub fn preprocess(file: Box<dyn Read>) -> Result<Summary> {
     let mut width: Option<usize> = None;
     let mut first_date = None;
     for result in reader.into_records() {
-        let record = result.map(|mut x| {
-            x.trim();
-            x
-        })?;
+        let record = result.map(trim)?;
 
         let timestamp = record
             .get(0)
@@ -170,12 +167,11 @@ pub fn preprocess(file: Box<dyn Read>) -> Result<Summary> {
 
         let values = get_values(record)?.collect_vec();
 
-        let values_count = values.len() - 1;
         if first_date == None {
             first_date = timestamp;
-            width = Some(values_count);
+            width = Some(values.len());
         } else if first_date == timestamp {
-            width = width.map(|v| v + values_count);
+            width = width.map(|v| v + values.len());
         }
 
         for value in values {
@@ -218,12 +214,12 @@ fn get_values(record: StringRecord) -> Result<impl Iterator<Item = f32>> {
     Ok(vals.into_iter())
 }
 
-pub fn preprocess_iter(file: Box<dyn Read>) -> Result<Summary> {
-    fn trim(mut record: StringRecord) -> StringRecord {
-        record.trim();
-        record
-    }
+fn trim(mut record: StringRecord) -> StringRecord {
+    record.trim();
+    record
+}
 
+pub fn preprocess_iter(file: Box<dyn Read>) -> Result<Summary> {
     fn get_datetime_if_not_err(res: &csv::Result<StringRecord>) -> String {
         match res {
             Ok(sr) => {
