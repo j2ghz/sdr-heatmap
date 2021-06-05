@@ -55,11 +55,6 @@ mod tests {
     use proptest::prelude::*;
 
     #[test]
-    fn dummy() {
-        assert_eq!(4, 2 + 2);
-    }
-
-    #[test]
     fn normalize_goes_up() {
         assert_eq!(
             (0..255)
