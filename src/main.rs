@@ -1,4 +1,5 @@
 #![warn(clippy::unwrap_used)]
+#![warn(clippy::panic)]
 use anyhow::Result;
 use anyhow::{anyhow, Context};
 use log::{debug, warn};

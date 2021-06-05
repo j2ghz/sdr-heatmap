@@ -118,14 +118,6 @@ impl Summary {
     }
 }
 
-fn parse_f32(s: &str) -> Result<f32> {
-    if s == "-nan" || s == "nan" {
-        Ok(f32::NAN)
-    } else {
-        Ok(s.parse::<f32>()?)
-    }
-}
-
 pub fn open_file<P: AsRef<Path>>(path: P) -> Result<Box<dyn std::io::Read>> {
     let path = path.as_ref();
     let file = File::open(path).context(format!("Couldn't open file '{}'", path.display()))?;
@@ -176,19 +168,7 @@ pub fn preprocess(file: Box<dyn Read>) -> Result<Summary> {
             .get(0)
             .and_then(|date| record.get(1).map(|time| format!("{} {}", date, time)));
 
-        let values: Vec<f32> = record
-            .iter()
-            .skip(6)
-            .map(|s| {
-                if s == "-nan" || s == "nan" {
-                    f32::NAN
-                } else {
-                    s.trim()
-                        .parse::<f32>()
-                        .unwrap_or_else(|e| panic!("'{}' should be a valid float: {:?}", s, e))
-                }
-            })
-            .collect();
+        let values = get_values(record)?.collect_vec();
 
         let values_count = values.len() - 1;
         if first_date == None {
@@ -218,6 +198,26 @@ pub fn preprocess(file: Box<dyn Read>) -> Result<Summary> {
     })
 }
 
+fn parse_f32(s: &str) -> Result<f32> {
+    if s == "-nan" || s == "nan" {
+        Ok(f32::NAN)
+    } else {
+        s.parse::<f32>()
+            .with_context(|| anyhow::anyhow!("'{}' should be a valid float", s))
+    }
+}
+
+fn get_values(record: StringRecord) -> Result<impl Iterator<Item = f32>> {
+    let mut vals = record
+        .into_iter()
+        .skip(6)
+        .map(parse_f32)
+        .collect::<Result<Vec<f32>>>()?;
+    vals.pop()
+                .ok_or_else(||anyhow::anyhow!("there should be at least one value in a row, so we should be able to skip the last one"))?;
+    Ok(vals.into_iter())
+}
+
 pub fn preprocess_iter(file: Box<dyn Read>) -> Result<Summary> {
     fn trim(mut record: StringRecord) -> StringRecord {
         record.trim();
@@ -235,26 +235,6 @@ pub fn preprocess_iter(file: Box<dyn Read>) -> Result<Summary> {
             }
             Err(_) => "err".to_string(),
         }
-    }
-
-    fn parse_f32(s: &str) -> Result<f32> {
-        if s == "-nan" || s == "nan" {
-            Ok(f32::NAN)
-        } else {
-            s.parse::<f32>()
-                .with_context(|| anyhow::anyhow!("'{}' should be a valid float", s))
-        }
-    }
-
-    fn get_values(record: StringRecord) -> Result<impl Iterator<Item = f32>> {
-        let mut vals = record
-            .into_iter()
-            .skip(6)
-            .map(parse_f32)
-            .collect::<Result<Vec<f32>>>()?;
-        vals.pop()
-                    .ok_or_else(||anyhow::anyhow!("there should be at least one value in a row, so we should be able to skip the last one"))?;
-        Ok(vals.into_iter())
     }
 
     fn map_group(
@@ -338,7 +318,7 @@ pub fn process_iter<R: Read>(
     max: f32,
     width: usize,
 ) -> Result<(usize, usize, std::vec::Vec<u8>)> {
-    let img: Vec<u8> = reader
+    let img = reader
         .into_records()
         .map(|res| -> anyhow::Result<Measurement> {
             let mut record = res.context("Invalid CSV record")?;
@@ -346,19 +326,14 @@ pub fn process_iter<R: Read>(
             record.trim();
             Measurement::new(record)
         })
-        .map(|m| match m {
-            Ok(m) => Ok(m.values.into_iter().flat_map(|val| {
+        .map_ok(|m| {
+            m.values.into_iter().flat_map(|val| {
                 ArrayVec::from(scale_tocolor(Palette::Default, val, min, max)).into_iter()
-            })),
-            Err(e) => Err(e),
+            })
         })
-        .flat_map(|r| match r {
-            Ok(inner) => inner,
-            Err(e) => {
-                panic!("{:?}", e)
-            }
-        })
-        .collect();
+        .collect::<Result<Vec<_>>>()?;
+
+    let img = img.into_iter().flatten().collect_vec();
 
     Ok((width, img.len() / 3 / width, img))
 }
@@ -458,7 +433,7 @@ mod tests {
         )?;
         let iter = process_iter(read_file(open_file(path)?), sum.min, sum.max, sum.width)?;
 
-        assert!(basic.2 == iter.2, "Results differ");
+        assert_eq!(basic.2, iter.2, "Results differ");
         assert_eq!(basic.0, iter.0, "Widths differ");
         assert_eq!(basic.1, iter.1, "Heights differ");
         Ok(())
