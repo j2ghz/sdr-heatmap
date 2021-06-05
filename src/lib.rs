@@ -1,4 +1,5 @@
 #![warn(clippy::unwrap_used)]
+#![warn(clippy::panic)]
 use csv::StringRecord;
 use flate2::read::GzDecoder;
 use log::*;
@@ -145,7 +146,7 @@ pub fn main<P: AsRef<Path>>(path: P, palette: Palette) -> Result<()> {
     info!("Loading: {}", path.display());
     //Preprocess
     let file = open_file(path)?;
-    let summary = preprocess_iter(file);
+    let summary = preprocess_iter(file)?;
     info!("Color values {} to {}", summary.min, summary.max);
     //Process
     let file = open_file(path).context("Couldn't preprocess file")?;
@@ -159,18 +160,18 @@ pub fn main<P: AsRef<Path>>(path: P, palette: Palette) -> Result<()> {
     Ok(())
 }
 
-pub fn preprocess(file: Box<dyn Read>) -> Summary {
+pub fn preprocess(file: Box<dyn Read>) -> Result<Summary> {
     let reader = read_file(file);
     let mut min = f32::INFINITY;
     let mut max = f32::NEG_INFINITY;
     let mut width: Option<usize> = None;
     let mut first_date = None;
     for result in reader.into_records() {
-        let record = {
-            let mut x = result.unwrap();
+        let record = result.map(|mut x| {
             x.trim();
             x
-        };
+        })?;
+
         let timestamp = record
             .get(0)
             .and_then(|date| record.get(1).map(|time| format!("{} {}", date, time)));
@@ -208,49 +209,85 @@ pub fn preprocess(file: Box<dyn Read>) -> Summary {
             }
         }
     }
-    Summary {
+    Ok(Summary {
         min,
         max,
-        width: width.unwrap(),
-    }
+        width: width.ok_or_else(|| {
+            anyhow::anyhow!("width sohuld be defined if there's at least one row of data")
+        })?,
+    })
 }
 
-pub fn preprocess_iter(file: Box<dyn Read>) -> Summary {
-    read_file(file)
-        .into_records()
-        .map(|x| {
-            let mut x = x.unwrap();
-            x.trim();
-            x
-        })
-        .group_by(|line| format!("{} {}", line.get(0).unwrap(), line.get(1).unwrap()))
-        .into_iter()
-        .map(|(_, group)| {
-            group
-                .flat_map(|line| {
-                    let mut vals = line
-                        .into_iter()
-                        .skip(6)
-                        .map(|s| {
-                            if s == "-nan" || s == "nan" {
-                                f32::NAN
-                            } else {
-                                s.parse::<f32>().unwrap_or_else(|e| {
-                                    panic!("'{}' should be a valid float: '{:?}'", s, e)
-                                })
-                            }
-                        })
-                        .collect::<Vec<f32>>();
-                    vals.pop().unwrap();
-                    vals
-                })
-                .collect::<Vec<_>>()
-        })
-        .fold(Summary::empty(), |sum, vals| {
+pub fn preprocess_iter(file: Box<dyn Read>) -> Result<Summary> {
+    fn trim(mut record: StringRecord) -> StringRecord {
+        record.trim();
+        record
+    }
+
+    fn get_datetime_if_not_err(res: &csv::Result<StringRecord>) -> String {
+        match res {
+            Ok(sr) => {
+                format!(
+                    "{} {}",
+                    sr.get(0).unwrap_or("empty").to_string(),
+                    sr.get(1).unwrap_or("empty").to_string()
+                )
+            }
+            Err(_) => "err".to_string(),
+        }
+    }
+
+    fn parse_f32(s: &str) -> Result<f32> {
+        if s == "-nan" || s == "nan" {
+            Ok(f32::NAN)
+        } else {
+            s.parse::<f32>()
+                .with_context(|| anyhow::anyhow!("'{}' should be a valid float", s))
+        }
+    }
+
+    fn get_values(record: StringRecord) -> Result<impl Iterator<Item = f32>> {
+        let mut vals = record
+            .into_iter()
+            .skip(6)
+            .map(parse_f32)
+            .collect::<Result<Vec<f32>>>()?;
+        vals.pop()
+                    .ok_or_else(||anyhow::anyhow!("there should be at least one value in a row, so we should be able to skip the last one"))?;
+        Ok(vals.into_iter())
+    }
+
+    fn map_group(
+        (_, group): (String, impl Iterator<Item = csv::Result<StringRecord>>),
+    ) -> Result<impl Iterator<Item = f32>> {
+        Ok(group
+            .map(|record| {
+                record
+                    .context("failed to parse record")
+                    .and_then(get_values)
+                    .map(|x| x.collect_vec())
+            })
+            .collect::<Result<Vec<Vec<f32>>>>()?
+            .into_iter()
+            .flat_map(|x| x.into_iter()))
+    }
+
+    fn fold_vals(summary: Result<Summary>, vals: impl Iterator<Item = f32>) -> Result<Summary> {
+        let vals = vals.collect_vec();
+        summary.map(|sum| {
             let width = vals.len();
             vals.into_iter()
                 .fold(sum, |sum, val| Summary::update(sum, val, width))
         })
+    }
+
+    read_file(file)
+        .into_records()
+        .map_ok(trim)
+        .group_by(get_datetime_if_not_err)
+        .into_iter()
+        .map(map_group)
+        .fold_ok(Ok(Summary::empty()), fold_vals)?
 }
 
 pub fn process<R: Read>(
@@ -376,8 +413,8 @@ mod tests {
     use webp::PixelLayout;
 
     #[test]
-    fn preprocess_basic_result() {
-        let res = preprocess(open_file(Path::new("samples/46M.csv.gz")).unwrap());
+    fn preprocess_basic_result() -> Result<()> {
+        let res = preprocess(open_file(Path::new("samples/46M.csv.gz"))?)?;
         assert_eq!(
             res,
             Summary {
@@ -386,6 +423,7 @@ mod tests {
                 width: 11622,
             }
         );
+        Ok(())
     }
 
     #[test]
@@ -396,8 +434,8 @@ mod tests {
     }
 
     #[test]
-    fn preprocess_iter_result() {
-        let res = preprocess_iter(open_file(Path::new("samples/46M.csv.gz")).unwrap());
+    fn preprocess_iter_result() -> Result<()> {
+        let res = preprocess_iter(open_file(Path::new("samples/46M.csv.gz"))?)?;
         assert_eq!(
             res,
             Summary {
@@ -406,38 +444,33 @@ mod tests {
                 width: 11622,
             }
         );
+        Ok(())
     }
 
     #[test_resources("samples/*.csv.gz")]
-    fn process_implementations_equal(path: &str) {
-        let sum = preprocess_iter(open_file(path).unwrap());
+    fn process_implementations_equal(path: &str) -> Result<()> {
+        let sum = preprocess_iter(open_file(path)?)?;
         let basic = process(
-            read_file(open_file(path).unwrap()),
+            read_file(open_file(path)?),
             sum.min,
             sum.max,
             Palette::Default,
-        )
-        .unwrap();
-        let iter = process_iter(
-            read_file(open_file(path).unwrap()),
-            sum.min,
-            sum.max,
-            sum.width,
-        )
-        .unwrap();
+        )?;
+        let iter = process_iter(read_file(open_file(path)?), sum.min, sum.max, sum.width)?;
 
         assert!(basic.2 == iter.2, "Results differ");
         assert_eq!(basic.0, iter.0, "Widths differ");
         assert_eq!(basic.1, iter.1, "Heights differ");
+        Ok(())
     }
 
     #[test_resources("samples/*.csv.gz")]
-    fn complete_gzip(path: &str) {
-        main(path, Palette::Default).unwrap()
+    fn complete_gzip(path: &str) -> Result<()> {
+        main(path, Palette::Default)
     }
 
     #[test_resources("samples/*.csv")]
-    fn complete_plain(path: &str) {
-        main(path, Palette::Default).unwrap()
+    fn complete_plain(path: &str) -> Result<()> {
+        main(path, Palette::Default)
     }
 }
