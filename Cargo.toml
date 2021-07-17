@@ -37,4 +37,4 @@ rayon = '1.5.0'
 stderrlog = '0.5.0'
 structopt = "0.3"
 walkdir = '2'
-webp = "0.1.2"
+webp = "0.1.3"
