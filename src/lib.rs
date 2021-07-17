@@ -1,4 +1,5 @@
 #![warn(clippy::unwrap_used)]
+#![warn(clippy::panic)]
 use csv::StringRecord;
 use flate2::read::GzDecoder;
 use log::*;
@@ -117,14 +118,6 @@ impl Summary {
     }
 }
 
-fn parse_f32(s: &str) -> Result<f32> {
-    if s == "-nan" || s == "nan" {
-        Ok(f32::NAN)
-    } else {
-        Ok(s.parse::<f32>()?)
-    }
-}
-
 pub fn open_file<P: AsRef<Path>>(path: P) -> Result<Box<dyn std::io::Read>> {
     let path = path.as_ref();
     let file = File::open(path).context(format!("Couldn't open file '{}'", path.display()))?;
@@ -145,7 +138,7 @@ pub fn main<P: AsRef<Path>>(path: P, palette: Palette) -> Result<()> {
     info!("Loading: {}", path.display());
     //Preprocess
     let file = open_file(path)?;
-    let summary = preprocess_iter(file);
+    let summary = preprocess_iter(file)?;
     info!("Color values {} to {}", summary.min, summary.max);
     //Process
     let file = open_file(path).context("Couldn't preprocess file")?;
@@ -159,42 +152,26 @@ pub fn main<P: AsRef<Path>>(path: P, palette: Palette) -> Result<()> {
     Ok(())
 }
 
-pub fn preprocess(file: Box<dyn Read>) -> Summary {
+pub fn preprocess(file: Box<dyn Read>) -> Result<Summary> {
     let reader = read_file(file);
     let mut min = f32::INFINITY;
     let mut max = f32::NEG_INFINITY;
     let mut width: Option<usize> = None;
     let mut first_date = None;
     for result in reader.into_records() {
-        let record = {
-            let mut x = result.unwrap();
-            x.trim();
-            x
-        };
+        let record = result.map(trim)?;
+
         let timestamp = record
             .get(0)
             .and_then(|date| record.get(1).map(|time| format!("{} {}", date, time)));
 
-        let values: Vec<f32> = record
-            .iter()
-            .skip(6)
-            .map(|s| {
-                if s == "-nan" || s == "nan" {
-                    f32::NAN
-                } else {
-                    s.trim()
-                        .parse::<f32>()
-                        .unwrap_or_else(|e| panic!("'{}' should be a valid float: {:?}", s, e))
-                }
-            })
-            .collect();
+        let values = get_values(record)?.collect_vec();
 
-        let values_count = values.len() - 1;
         if first_date == None {
             first_date = timestamp;
-            width = Some(values_count);
+            width = Some(values.len());
         } else if first_date == timestamp {
-            width = width.map(|v| v + values_count);
+            width = width.map(|v| v + values.len());
         }
 
         for value in values {
@@ -208,49 +185,85 @@ pub fn preprocess(file: Box<dyn Read>) -> Summary {
             }
         }
     }
-    Summary {
+    Ok(Summary {
         min,
         max,
-        width: width.unwrap(),
+        width: width.ok_or_else(|| {
+            anyhow::anyhow!("width sohuld be defined if there's at least one row of data")
+        })?,
+    })
+}
+
+fn parse_f32(s: &str) -> Result<f32> {
+    if s == "-nan" || s == "nan" {
+        Ok(f32::NAN)
+    } else {
+        s.parse::<f32>()
+            .with_context(|| anyhow::anyhow!("'{}' should be a valid float", s))
     }
 }
 
-pub fn preprocess_iter(file: Box<dyn Read>) -> Summary {
-    read_file(file)
-        .into_records()
-        .map(|x| {
-            let mut x = x.unwrap();
-            x.trim();
-            x
-        })
-        .group_by(|line| format!("{} {}", line.get(0).unwrap(), line.get(1).unwrap()))
+fn get_values(record: StringRecord) -> Result<impl Iterator<Item = f32>> {
+    let mut vals = record
         .into_iter()
-        .map(|(_, group)| {
-            group
-                .flat_map(|line| {
-                    let mut vals = line
-                        .into_iter()
-                        .skip(6)
-                        .map(|s| {
-                            if s == "-nan" || s == "nan" {
-                                f32::NAN
-                            } else {
-                                s.parse::<f32>().unwrap_or_else(|e| {
-                                    panic!("'{}' should be a valid float: '{:?}'", s, e)
-                                })
-                            }
-                        })
-                        .collect::<Vec<f32>>();
-                    vals.pop().unwrap();
-                    vals
-                })
-                .collect::<Vec<_>>()
-        })
-        .fold(Summary::empty(), |sum, vals| {
+        .skip(6)
+        .map(parse_f32)
+        .collect::<Result<Vec<f32>>>()?;
+    vals.pop()
+                .ok_or_else(||anyhow::anyhow!("there should be at least one value in a row, so we should be able to skip the last one"))?;
+    Ok(vals.into_iter())
+}
+
+fn trim(mut record: StringRecord) -> StringRecord {
+    record.trim();
+    record
+}
+
+pub fn preprocess_iter(file: Box<dyn Read>) -> Result<Summary> {
+    fn get_datetime_if_not_err(res: &csv::Result<StringRecord>) -> String {
+        match res {
+            Ok(sr) => {
+                format!(
+                    "{} {}",
+                    sr.get(0).unwrap_or("empty").to_string(),
+                    sr.get(1).unwrap_or("empty").to_string()
+                )
+            }
+            Err(_) => "err".to_string(),
+        }
+    }
+
+    fn map_group(
+        (_, group): (String, impl Iterator<Item = csv::Result<StringRecord>>),
+    ) -> Result<impl Iterator<Item = f32>> {
+        Ok(group
+            .map(|record| {
+                record
+                    .context("failed to parse record")
+                    .and_then(get_values)
+                    .map(|x| x.collect_vec())
+            })
+            .collect::<Result<Vec<Vec<f32>>>>()?
+            .into_iter()
+            .flat_map(|x| x.into_iter()))
+    }
+
+    fn fold_vals(summary: Result<Summary>, vals: impl Iterator<Item = f32>) -> Result<Summary> {
+        let vals = vals.collect_vec();
+        summary.map(|sum| {
             let width = vals.len();
             vals.into_iter()
                 .fold(sum, |sum, val| Summary::update(sum, val, width))
         })
+    }
+
+    read_file(file)
+        .into_records()
+        .map_ok(trim)
+        .group_by(get_datetime_if_not_err)
+        .into_iter()
+        .map(map_group)
+        .fold_ok(Ok(Summary::empty()), fold_vals)?
 }
 
 pub fn process<R: Read>(
@@ -300,24 +313,25 @@ pub fn process_iter<R: Read>(
     min: f32,
     max: f32,
     width: usize,
-) -> (usize, usize, std::vec::Vec<u8>) {
-    let img: Vec<u8> = reader
+) -> Result<(usize, usize, std::vec::Vec<u8>)> {
+    let img = reader
         .into_records()
-        .map(|res| {
-            let mut record = res.expect("Invalid CSV record");
+        .map(|res| -> anyhow::Result<Measurement> {
+            let mut record = res.context("Invalid CSV record")?;
             debug_assert!(record.len() >= 7);
             record.trim();
-            record
+            Measurement::new(record)
         })
-        .map(Measurement::new)
-        .flat_map(|m| m.unwrap().values.into_iter())
-        .flat_map(|val| {
-            let slice = scale_tocolor(Palette::Default, val, min, max);
-            ArrayVec::from(slice).into_iter()
+        .map_ok(|m| {
+            m.values.into_iter().flat_map(|val| {
+                ArrayVec::from(scale_tocolor(Palette::Default, val, min, max)).into_iter()
+            })
         })
-        .collect();
+        .collect::<Result<Vec<_>>>()?;
 
-    (width, img.len() / 3 / width, img)
+    let img = img.into_iter().flatten().collect_vec();
+
+    Ok((width, img.len() / 3 / width, img))
 }
 
 fn tape_measure(width: usize, imgdata: &mut Vec<u8>) {
@@ -370,8 +384,8 @@ mod tests {
     use webp::PixelLayout;
 
     #[test]
-    fn preprocess_basic_result() {
-        let res = preprocess(open_file(Path::new("samples/46M.csv.gz")).unwrap());
+    fn preprocess_basic_result() -> Result<()> {
+        let res = preprocess(open_file(Path::new("samples/46M.csv.gz"))?)?;
         assert_eq!(
             res,
             Summary {
@@ -380,6 +394,7 @@ mod tests {
                 width: 11622,
             }
         );
+        Ok(())
     }
 
     #[test]
@@ -390,8 +405,8 @@ mod tests {
     }
 
     #[test]
-    fn preprocess_iter_result() {
-        let res = preprocess_iter(open_file(Path::new("samples/46M.csv.gz")).unwrap());
+    fn preprocess_iter_result() -> Result<()> {
+        let res = preprocess_iter(open_file(Path::new("samples/46M.csv.gz"))?)?;
         assert_eq!(
             res,
             Summary {
@@ -400,42 +415,33 @@ mod tests {
                 width: 11622,
             }
         );
+        Ok(())
     }
 
     #[test_resources("samples/*.csv.gz")]
-    fn process_implementations_equal(path: &str) {
-        let sum = preprocess_iter(open_file(path).unwrap());
+    fn process_implementations_equal(path: &str) -> Result<()> {
+        let sum = preprocess_iter(open_file(path)?)?;
         let basic = process(
-            read_file(open_file(path).unwrap()),
+            read_file(open_file(path)?),
             sum.min,
             sum.max,
             Palette::Default,
-        )
-        .unwrap();
-        let iter = process_iter(
-            read_file(open_file(path).unwrap()),
-            sum.min,
-            sum.max,
-            sum.width,
-        );
+        )?;
+        let iter = process_iter(read_file(open_file(path)?), sum.min, sum.max, sum.width)?;
 
-        assert!(basic.2 == iter.2, "Results differ");
+        assert_eq!(basic.2, iter.2, "Results differ");
         assert_eq!(basic.0, iter.0, "Widths differ");
         assert_eq!(basic.1, iter.1, "Heights differ");
+        Ok(())
     }
 
     #[test_resources("samples/*.csv.gz")]
-    fn complete_gzip(path: &str) {
-        main(path, Palette::Default).unwrap()
+    fn complete_gzip(path: &str) -> Result<()> {
+        main(path, Palette::Default)
     }
 
     #[test_resources("samples/*.csv")]
-    fn complete_plain(path: &str) {
-        main(path, Palette::Default).unwrap()
-    }
-
-    #[test]
-    fn dummy() {
-        assert_eq!(4, 2 + 2);
+    fn complete_plain(path: &str) -> Result<()> {
+        main(path, Palette::Default)
     }
 }

@@ -1,4 +1,5 @@
 #![warn(clippy::unwrap_used)]
+#![warn(clippy::panic)]
 use anyhow::Result;
 use anyhow::{anyhow, Context};
 use log::{debug, warn};
@@ -29,9 +30,9 @@ impl FromStr for OptPalette {
         }
     }
 }
-impl Into<Palette> for OptPalette {
-    fn into(self) -> Palette {
-        match self {
+impl From<OptPalette> for Palette {
+    fn from(opt: OptPalette) -> Self {
+        match opt {
             OptPalette::Default => Palette::Default,
             OptPalette::Extended => Palette::Extended,
         }
@@ -93,10 +94,4 @@ fn main() -> Result<()> {
     Ok(())
 }
 #[cfg(test)]
-mod tests {
-
-    #[test]
-    fn dummy() {
-        assert_eq!(4, 2 + 2);
-    }
-}
+mod tests {}

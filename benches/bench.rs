@@ -58,7 +58,7 @@ fn preprocess_bench(c: &mut Criterion) {
                 b.iter_with_large_setup(
                     || read_file_to_memory(file),
                     |data| {
-                        let summary = preprocess(data);
+                        let summary = preprocess(data).unwrap();
                         black_box(summary);
                     },
                 )
@@ -71,7 +71,7 @@ fn preprocess_bench(c: &mut Criterion) {
                 b.iter_with_large_setup(
                     || read_file_to_memory(file),
                     |data| {
-                        let summary = preprocess_iter(data);
+                        let summary = preprocess_iter(data).unwrap();
                         black_box(summary);
                     },
                 )
@@ -107,7 +107,7 @@ fn process_bench(c: &mut Criterion) {
                 b.iter_with_large_setup(
                     || read_csv_to_memory(file),
                     |data| {
-                        let summary = process_iter(data, -1000.0, 1000.0, 1);
+                        let summary = process_iter(data, -1000.0, 1000.0, 1).unwrap();
                         black_box(summary);
                     },
                 )

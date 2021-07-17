@@ -55,22 +55,18 @@ mod tests {
     use proptest::prelude::*;
 
     #[test]
-    fn dummy() {
-        assert_eq!(4, 2 + 2);
-    }
-
-    #[test]
-    fn normalize_goes_up() {
+    fn normalize_goes_up() -> Result<()> {
         assert_eq!(
             (0..255)
                 .map(|v| v as f32)
                 .map(|v| scale_tocolor(Palette::Default, v, 0.0, 255.0)
                     .first()
                     .cloned()
-                    .unwrap())
-                .collect::<Vec<_>>(),
+                    .ok_or_else(|| anyhow::anyhow!("color should be valid")))
+                .collect::<Result<Vec<_>>>()?,
             (0..255).map(|v| v as u8).collect::<Vec<_>>()
         );
+        Ok(())
     }
 
     #[test]

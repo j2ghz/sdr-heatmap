@@ -14,10 +14,4 @@ impl PaletteColorize for DefaultPalette {
     }
 }
 #[cfg(test)]
-mod tests {
-
-    #[test]
-    fn dummy() {
-        assert_eq!(4, 2 + 2);
-    }
-}
+mod tests {}
