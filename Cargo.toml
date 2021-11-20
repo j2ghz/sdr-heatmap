@@ -2,7 +2,7 @@
 authors = ['J2ghz <j2.00ghz@gmail.com>']
 categories = ['command-line-utilities']
 description = 'Generates images from rtl_power csv files'
-edition = '2018'
+edition = '2021'
 exclude = ['samples/*']
 keywords = [
   'sdr',

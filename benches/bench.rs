@@ -49,7 +49,7 @@ fn get_test_files() -> std::vec::Vec<std::path::PathBuf> {
 fn preprocess_bench(c: &mut Criterion) {
     let mut group = c.benchmark_group("preprocess implementations");
     for file in get_test_files().iter() {
-        let size = get_file_size(&file);
+        let size = get_file_size(file);
         group.throughput(Throughput::Bytes(size));
         group.bench_with_input(
             BenchmarkId::new("basic", file.display()),
@@ -85,7 +85,7 @@ fn preprocess_bench(c: &mut Criterion) {
 fn process_bench(c: &mut Criterion) {
     let mut group = c.benchmark_group("process implementations");
     for file in get_test_files().iter() {
-        let size = get_file_size(&file);
+        let size = get_file_size(file);
         group.throughput(Throughput::Bytes(size));
         group.bench_with_input(
             BenchmarkId::new("basic", file.display()),
