@@ -25,9 +25,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.42"
+version = "1.0.59"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "595d3cfa7a60d4555cb5067b99f07142a08ea778de5cf993f7b75c7d8fabc486"
+checksum = "c91f1f46651137be86f3a2b9a8359f9ab421d04d941c62b5982e1ca21113adf9"
 
 [[package]]
 name = "arrayvec"
